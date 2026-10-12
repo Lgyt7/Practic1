@@ -1,0 +1,42 @@
+%% ER-диаграмма портала «Хвост и Лапы» в нотации Mermaid.
+%% Текстовое представление той же схемы, что и в er_diagram.png.
+%% Открыть можно в GitHub, VS Code (плагин Mermaid) или на mermaid.live.
+
+erDiagram
+
+    users {
+        serial        id PK "первичный ключ"
+        varchar(50)   login UK "латиница и цифры, не менее 6 символов"
+        varchar(255)  password "хеш пароля, password_hash"
+        varchar(150)  full_name "ФИО кириллицей"
+        varchar(20)   phone "формат +7(XXX)XXX-XX-XX"
+        varchar(120)  email UK "электронная почта"
+        varchar(10)   role "user или admin"
+        timestamp     created_at "дата регистрации"
+    }
+
+    applications {
+        serial        id PK
+        integer       user_id FK "владелец питомца"
+        varchar(100)  pet_name "кличка"
+        varchar(50)   animal_type "вид животного"
+        varchar(200)  service "услуга"
+        date          appt_date "дата приёма"
+        varchar(5)    appt_time "время приёма ЧЧ:ММ"
+        varchar(30)   payment_method "Наличными или Картой в клинике"
+        varchar(20)   status "Новая / Подтверждена / Приём завершён / Отменена"
+        timestamp     created_at "дата подачи заявки"
+    }
+
+    reviews {
+        serial        id PK
+        integer       application_id FK "заявка"
+        integer       user_id FK "автор отзыва"
+        text          review "текст отзыва"
+        smallint      rating "оценка 1-5 или NULL"
+        timestamp     created_at "дата отзыва"
+    }
+
+    users ||--o{ applications : "оформляет заявки"
+    users ||--o{ reviews : "оставляет отзывы"
+    applications ||--o| reviews : "по заявке не более одного отзыва"

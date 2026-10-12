@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" width="1600" height="700" role="img" aria-label="Диагностика">
+  <defs>
+    <linearGradient id="s3bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14504f"/>
+      <stop offset="100%" stop-color="#2a8a80"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="700" fill="url(#s3bg)"/>
+  <circle cx="1350" cy="160" r="210" fill="#ffffff" opacity="0.06"/>
+  <circle cx="260" cy="590" r="230" fill="#ffffff" opacity="0.05"/>
+
+  <!-- стетоскоп -->
+  <g transform="translate(1120 170)">
+    <path d="M40 0v90c0 56 44 100 100 100h40c56 0 100-44 100-100V0" stroke="#ffffff" stroke-width="20" stroke-linecap="round" fill="none" opacity="0.95"/>
+    <circle cx="180" cy="240" r="46" fill="#ffffff" opacity="0.95"/>
+    <circle cx="180" cy="240" r="24" fill="#e8873a"/>
+    <path d="M280 190c0 90 60 130 130 150" stroke="#ffffff" stroke-width="20" stroke-linecap="round" fill="none" opacity="0.95"/>
+    <circle cx="420" cy="345" r="40" fill="#ffffff" opacity="0.95"/>
+    <circle cx="420" cy="345" r="18" fill="#e8873a"/>
+  </g>
+
+  <!-- медицинский крест -->
+  <g transform="translate(330 250)">
+    <rect width="220" height="220" rx="28" fill="#ffffff" opacity="0.95"/>
+    <rect x="86" y="44" width="48" height="132" rx="10" fill="#e8873a"/>
+    <rect x="44" y="86" width="132" height="48" rx="10" fill="#e8873a"/>
+  </g>
+
+  <!-- пульс -->
+  <g transform="translate(700 560)">
+    <rect width="380" height="90" rx="20" fill="#000000" opacity="0.18"/>
+    <path d="M20 60h70l22-36 30 62 26-44 20 18h172" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
