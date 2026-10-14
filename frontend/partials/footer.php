@@ -14,7 +14,12 @@ declare(strict_types=1);
             © <?= date('Y') ?> <?= e(APP_NAME) ?>. Учебная практика, вариант 4.
         </p>
         <p class="footer__contacts">
-            Телефон: <?= e(CLINIC_PHONE) ?> &nbsp;|&nbsp; E-mail: <?= e(CLINIC_EMAIL) ?>
+            <i class="bi bi-telephone-fill"></i> <?= e(CLINIC_PHONE) ?>
+            <span class="footer__sep">|</span>
+            <i class="bi bi-envelope-fill"></i> <?= e(CLINIC_EMAIL) ?>
+        </p>
+        <p class="footer__hours">
+            <i class="bi bi-clock"></i> Ежедневно с <?= e(CLINIC_OPEN) ?> до <?= e(CLINIC_CLOSE) ?>
         </p>
     </div>
 </footer>
