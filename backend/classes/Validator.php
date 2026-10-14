@@ -171,6 +171,37 @@ final class Validator
             return $this->add($field, 'Время приёма в формате ЧЧ:ММ, например 10:30.');
         }
 
+        // Приём возможен только в часы работы клиники.
+        if ($value < CLINIC_OPEN || $value > CLINIC_CLOSE) {
+            return $this->add(
+                $field,
+                sprintf('Клиника работает с %s до %s. Выберите время в этом диапазоне.', CLINIC_OPEN, CLINIC_CLOSE)
+            );
+        }
+
+        return $this;
+    }
+
+    /** Значение выбирается из справочника. */
+    public function inList(string $field, array $allowed, string $label): self
+    {
+        $value = $this->value($field);
+
+        if ($value === '') {
+            return $this->add($field, "Выберите значение поля «{$label}».");
+        }
+
+        if (!in_array($value, $allowed, true)) {
+            return $this->add(
+                $field,
+                sprintf(
+                    'Недопустимое значение поля «%s». Выберите одно из: %s.',
+                    $label,
+                    implode(', ', $allowed)
+                )
+            );
+        }
+
         return $this;
     }
 

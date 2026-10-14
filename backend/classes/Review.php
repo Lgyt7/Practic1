@@ -53,7 +53,8 @@ final class Review
                JOIN applications a ON a.id = r.application_id
               ORDER BY r.created_at DESC
               LIMIT :limit',
-            ['limit' => $limit]
+            ['limit' => $limit],
+            ['limit' => PDO::PARAM_INT]
         );
     }
 

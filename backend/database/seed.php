@@ -5,7 +5,8 @@ declare(strict_types=1);
  * Служебный скрипт: наполняет базу начальными данными.
  * Запуск:  php backend/database/seed.php
  *
- * Создаёт администратора (Admin / VetLapa1) и демонстрационные записи.
+ * Создаёт администратора (Admin / VetLapa1), владельца питомца
+ * и демонстрационные заявки в разных статусах и услугах.
  * Идемпотентен — повторный запуск не создаёт дубликаты.
  */
 
@@ -34,46 +35,43 @@ if (!User::loginExists('petrov01')) {
 
 $owner = User::findByLogin('petrov01');
 
-// --- Демонстрационные заявки ----------------------------------------
-if ($owner !== null && Application::countByStatus() === array_fill_keys(
-    [STATUS_NEW, STATUS_CONFIRMED, STATUS_DONE, STATUS_CANCELLED],
-    0
-)) {
-    // Завершённый приём — чтобы было видно рабочее поле отзыва.
-    $doneId = Application::create(
-        (int) $owner['id'],
-        'Барсик',
-        'Кошка',
-        'Вакцинация от бешенства',
-        '12.06.2026',
-        '10:30',
-        PAYMENT_CARD
-    );
-    Application::changeStatus($doneId, STATUS_CONFIRMED);
-    Application::changeStatus($doneId, STATUS_DONE);
-
-    Review::create($doneId, (int) $owner['id'], 'Врач очень внимательный, кота не боялся.', 5);
-
-    Application::create(
-        (int) $owner['id'],
-        'Шарик',
-        'Собака',
-        'Стрижка и обработка когтей',
-        '05.07.2026',
-        '15:00',
-        PAYMENT_CASH
-    );
-    Application::create(
-        (int) $owner['id'],
-        'Рыжик',
-        'Хомяк',
-        'Консультация орнитолога',
-        '20.07.2026',
-        '09:15',
-        PAYMENT_CASH
-    );
-
-    echo "Создано 3 демонстрационные заявки и 1 отзыв.\n";
+if ($owner === null) {
+    exit("Не удалось получить владельца заявок.\n");
 }
 
-echo "Готово. Обычных пользователей в системе: " . User::count() . "\n";
+// --- Демонстрационные заявки ----------------------------------------
+$empty = array_fill_keys([STATUS_NEW, STATUS_CONFIRMED, STATUS_DONE, STATUS_CANCELLED], 0);
+
+if (Application::countByStatus() === $empty) {
+    $uid = (int) $owner['id'];
+
+    // Завершённый приём с отзывом — чтобы было видно форму и блокировку отзыва.
+    $doneId = Application::create($uid, 'Барсик', 'кошка', 'вакцинация',     '12.06.2026', '10:30', PAYMENT_CARD);
+    Application::changeStatus($doneId, STATUS_CONFIRMED);
+    Application::changeStatus($doneId, STATUS_DONE);
+    Review::create($doneId, $uid, 'Врач очень внимательный, кота не боялся.', 5);
+
+    // Ещё один завершённый приём без отзыва — чтобы показать доступную форму.
+    $doneId2 = Application::create($uid, 'Шарик', 'собака', 'УЗИ', '20.06.2026', '15:00', PAYMENT_CASH);
+    Application::changeStatus($doneId2, STATUS_CONFIRMED);
+    Application::changeStatus($doneId2, STATUS_DONE);
+
+    // Подтверждённая заявка — отзыв недоступен.
+    $confId = Application::create($uid, 'Рыжик', 'грызун', 'первичный осмотр', '05.07.2026', '09:15', PAYMENT_CASH);
+    Application::changeStatus($confId, STATUS_CONFIRMED);
+
+    // Новые заявки разных услуг — для проверки фильтра и пагинации.
+    Application::create($uid, 'Персик',   'кошка',  'стрижка когтей',   '18.07.2026', '11:45', PAYMENT_CARD);
+    Application::create($uid, 'Луна',     'собака', 'вакцинация',       '22.07.2026', '13:00', PAYMENT_CASH);
+    Application::create($uid, 'Чижик',    'птица',  'первичный осмотр', '29.07.2026', '16:20', PAYMENT_CASH);
+    Application::create($uid, 'Ёжик',     'другое', 'УЗИ',              '02.08.2026', '09:45', PAYMENT_CARD);
+
+    // Отменённая заявка — терминальный статус.
+    $cancId = Application::create($uid, 'Тузик', 'кошка', 'стрижка когтей', '01.07.2026', '12:10', PAYMENT_CASH);
+    Application::changeStatus($cancId, STATUS_CANCELLED);
+
+    echo "Создано 8 демонстрационных заявок и 1 отзыв.\n";
+}
+
+echo "Готово. Пользователей в системе: " . User::count() . "\n";
+echo "Заявок: " . array_sum(Application::countByStatus()) . "\n";

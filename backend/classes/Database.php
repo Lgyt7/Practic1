@@ -31,33 +31,44 @@ final class Database
         return self::$instance;
     }
 
-    /** Выполнить подготовленный запрос и вернуть все строки. */
-    public static function fetchAll(string $sql, array $params = []): array
+    /**
+     * Подготовить и выполнить запрос.
+     *
+     * @param string              $sql    запрос с плейсхолдерами
+     * @param array<string,mixed> $params значения для подстановки
+     * @param array<string,int>   $types  типы PDO::PARAM_* (нужны для LIMIT/OFFSET)
+     */
+    private static function run(string $sql, array $params, array $types = []): PDOStatement
     {
         $stmt = self::getConnection()->prepare($sql);
-        $stmt->execute($params);
 
-        return $stmt->fetchAll();
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(':' . $key, $value, $types[$key] ?? PDO::PARAM_STR);
+        }
+
+        $stmt->execute();
+
+        return $stmt;
+    }
+
+    /** Выполнить подготовленный запрос и вернуть все строки. */
+    public static function fetchAll(string $sql, array $params = [], array $types = []): array
+    {
+        return self::run($sql, $params, $types)->fetchAll();
     }
 
     /** Выполнить подготовленный запрос и вернуть одну строку. */
-    public static function fetchOne(string $sql, array $params = []): ?array
+    public static function fetchOne(string $sql, array $params = [], array $types = []): ?array
     {
-        $stmt = self::getConnection()->prepare($sql);
-        $stmt->execute($params);
-
-        $row = $stmt->fetch();
+        $row = self::run($sql, $params, $types)->fetch();
 
         return $row === false ? null : $row;
     }
 
     /** Выполнить подготовленный запрос без возврата данных. */
-    public static function execute(string $sql, array $params = []): int
+    public static function execute(string $sql, array $params = [], array $types = []): int
     {
-        $stmt = self::getConnection()->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->rowCount();
+        return self::run($sql, $params, $types)->rowCount();
     }
 
     /**

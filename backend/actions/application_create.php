@@ -30,10 +30,12 @@ setOld([
     'payment_method' => $payment,
 ]);
 
+// Вид животного и услуга принимаются только из справочников
+// (backend/config.php) — свободный текст отклоняется сервером.
 $validator = Validator::make($_POST)
     ->text('pet_name', 'Кличка питомца', 1, 100)
-    ->text('animal_type', 'Вид животного', 1, 50)
-    ->text('service', 'Услуга', 3, 200)
+    ->inList('animal_type', ANIMAL_TYPES, 'Вид животного')
+    ->inList('service', SERVICES, 'Услуга')
     ->date('appt_date')
     ->time('appt_time')
     ->paymentMethod();

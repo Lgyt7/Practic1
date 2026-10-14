@@ -7,6 +7,25 @@ declare(strict_types=1);
  */
 final class Application
 {
+    /**
+     * Символ экранирования для шаблонов LIKE.
+     *
+     * Именно «!», а не «\»: pdo_pgsql разбирает именованные плейсхолдеры
+     * самостоятельно, и обратный слэш внутри строки сбивает этот разбор —
+     * все плейсхолдеры после ESCAPE '\' теряются («Invalid parameter number»).
+     */
+    public const LIKE_ESCAPE = '!';
+
+    /** Экранирование строки для сравнения по шаблону LIKE. */
+    public static function escapeLike(string $value): string
+    {
+        return str_replace(
+            [self::LIKE_ESCAPE, '%', '_'],
+            [self::LIKE_ESCAPE . self::LIKE_ESCAPE, self::LIKE_ESCAPE . '%', self::LIKE_ESCAPE . '_'],
+            $value
+        );
+    }
+
     /** Создание заявки. Статус автоматически «Новая». */
     public static function create(
         int $userId,
@@ -48,18 +67,77 @@ final class Application
         );
     }
 
-    /** Все заявки системы (панель администратора). */
-    public static function all(): array
-    {
-        return Database::fetchAll(
-            "SELECT a.*,
-                    u.full_name,
-                    u.login,
-                    u.phone,
-                    u.email,
-                    (SELECT COUNT(*) FROM reviews r WHERE r.application_id = a.id) AS has_review
-               FROM applications a
-               JOIN users u ON u.id = a.user_id
+    /**
+     * Все заявки системы с фильтрами, поиском и пагинацией.
+     *
+     * @param string $status  фильтр по статусу ('' — без фильтра)
+     * @param string $service фильтр по услуге  ('' — без фильтра)
+     * @param string $query   поиск по кличке питомца или ФИО владельца
+     * @param int    $page    номер страницы, начиная с 1
+     * @return array{rows: array, total: int, pages: int, page: int}
+     */
+    public static function search(
+        string $status = '',
+        string $service = '',
+        string $query = '',
+        int $page = 1
+    ): array {
+        $where  = [];
+        $params = [];
+
+        if ($status !== '') {
+            $where[]  = 'a.status = :status';
+            $params['status'] = $status;
+        }
+
+        if ($service !== '') {
+            $where[]  = 'a.service = :service';
+            $params['service'] = $service;
+        }
+
+        if ($query !== '') {
+            // Имена плейсхолдеров разные: в нативных препаратах PDO
+            // один и тот же именованный параметр нельзя использовать дважды.
+            //
+            // ESCAPE '!' — чтобы «%» и «_» в поисковой строке искались
+            // как обычные символы, а не как служебные шаблоны LIKE.
+            $where[] = "(a.pet_name ILIKE :query_pet ESCAPE '" . self::LIKE_ESCAPE . "'"
+                . " OR u.full_name ILIKE :query_owner ESCAPE '" . self::LIKE_ESCAPE . "')";
+
+            $like = '%' . self::escapeLike($query) . '%';
+
+            $params['query_pet']   = $like;
+            $params['query_owner'] = $like;
+        }
+
+        $clause = $where === [] ? '' : (' WHERE ' . implode(' AND ', $where));
+
+        // Общее количество записей — для расчёта числа страниц.
+        $total = (int) (Database::fetchOne(
+            'SELECT COUNT(*) AS n FROM applications a JOIN users u ON u.id = a.user_id' . $clause,
+            $params
+        )['n'] ?? 0);
+
+        $perPage = max(1, ADMIN_PAGE_SIZE);
+        $pages   = max(1, (int) ceil($total / $perPage));
+        $page    = min(max(1, $page), $pages);
+        $offset  = ($page - 1) * $perPage;
+
+        $sql = <<<'SQL'
+            SELECT a.*,
+                   u.full_name,
+                   u.login,
+                   u.phone,
+                   u.email,
+                   (SELECT COUNT(*) FROM reviews r WHERE r.application_id = a.id) AS has_review
+              FROM applications a
+              JOIN users u ON u.id = a.user_id
+            SQL;
+
+        $sql .= $clause;
+
+        $sql .= <<<'SQL'
+
               ORDER BY
                     CASE a.status
                         WHEN 'Новая' THEN 1
@@ -68,8 +146,17 @@ final class Application
                         ELSE 4
                     END,
                     a.appt_date DESC,
-                    a.id DESC"
+                    a.id DESC
+             LIMIT :limit OFFSET :offset
+            SQL;
+
+        $rows = Database::fetchAll(
+            $sql,
+            $params + ['limit' => $perPage, 'offset' => $offset],
+            ['limit' => PDO::PARAM_INT, 'offset' => PDO::PARAM_INT]
         );
+
+        return ['rows' => $rows, 'total' => $total, 'pages' => $pages, 'page' => $page];
     }
 
     /** Заявка по идентификатору. */

@@ -62,6 +62,18 @@ CREATE TABLE applications (
     CONSTRAINT applications_time_check
         CHECK (appt_time ~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$'),
 
+    -- Клиника работает с 09:00 до 20:00
+    CONSTRAINT applications_time_range_check
+        CHECK (appt_time >= '09:00' AND appt_time <= '20:00'),
+
+    -- Вид животного выбирается из справочника
+    CONSTRAINT applications_animal_type_check
+        CHECK (animal_type IN ('кошка', 'собака', 'грызун', 'птица', 'другое')),
+
+    -- Услуга выбирается из справочника
+    CONSTRAINT applications_service_check
+        CHECK (service IN ('первичный осмотр', 'вакцинация', 'стрижка когтей', 'УЗИ')),
+
     CONSTRAINT applications_payment_check
         CHECK (payment_method IN ('Наличными', 'Картой в клинике')),
 
@@ -74,6 +86,9 @@ CREATE INDEX applications_status_idx ON applications (status);
 
 COMMENT ON TABLE  applications              IS 'Заявки владельцев питомцев на приём в клинику';
 COMMENT ON COLUMN applications.user_id      IS 'Владелец питомца';
+COMMENT ON COLUMN applications.animal_type IS 'Вид животного из справочника: кошка, собака, грызун, птица, другое';
+COMMENT ON COLUMN applications.service     IS 'Услуга из справочника: первичный осмотр, вакцинация, стрижка когтей, УЗИ';
+COMMENT ON COLUMN applications.appt_time   IS 'Время приёма ЧЧ:ММ в пределах работы клиники 09:00–20:00';
 COMMENT ON COLUMN applications.status       IS 'Новая → Подтверждена → Приём завершён | Отменена';
 COMMENT ON COLUMN applications.payment_method IS 'Наличными или Картой в клинике';
 

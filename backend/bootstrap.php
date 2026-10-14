@@ -141,6 +141,28 @@ function url(string $path = ''): string
 }
 
 /**
+ * URL страницы с GET-параметрами.
+ * Пустые значения отбрасываются, поэтому «фильтр не выбран»
+ * не превращается в ?status= — ссылка остаётся чистой.
+ *
+ * @param array<string, string|int> $params
+ */
+function urlQuery(string $path, array $params = []): string
+{
+    $clean = [];
+
+    foreach ($params as $key => $value) {
+        if ($value === '' || $value === null) {
+            continue;
+        }
+
+        $clean[$key] = $value;
+    }
+
+    return url($path) . ($clean === [] ? '' : '?' . http_build_query($clean));
+}
+
+/**
  * URL статического файла из frontend/assets/ с меткой версии.
  * Метка меняется при изменении файла, поэтому браузер
  * не показывает устаревшую версию CSS/JS из своего кеша.
@@ -196,5 +218,55 @@ function statusBadgeClass(string $status): string
         STATUS_DONE      => 'badge--done',
         STATUS_CANCELLED => 'badge--cancelled',
         default          => 'badge--new',
+    };
+}
+
+/**
+ * Иконка bootstrap-icons для вида животного.
+ * Справочник ANIMAL_TYPES используется и при валидации, и здесь —
+ * поэтому неизвестное значение не ломает страницу.
+ */
+function animalIcon(string $type): string
+{
+    return match ($type) {
+        'кошка'    => 'bi-heart-fill',
+        'собака'   => 'bi-house-heart',
+        'грызун'   => 'bi-bug',
+        'птица'    => 'bi-send',
+        default    => 'bi-emoji-smile-fill',
+    };
+}
+
+/** Иконка bootstrap-icons для услуги из справочника SERVICES. */
+function serviceIcon(string $service): string
+{
+    return match ($service) {
+        'первичный осмотр' => 'bi-clipboard2-pulse',
+        'вакцинация'       => 'bi-shield-fill-check',
+        'стрижка когтей'   => 'bi-scissors',
+        'УЗИ'              => 'bi-activity',
+        default            => 'bi-heart-pulse',
+    };
+}
+
+/**
+ * Русское склонение слова по числу.
+ *
+ * pluralForms(1, 'заявка', 'заявки', 'заявок')  → 'заявка'
+ * pluralForms(3, 'заявка', 'заявки', 'заявок')  → 'заявки'
+ * pluralForms(11, 'заявка', 'заявки', 'заявок') → 'заявок'
+ */
+function pluralForms(int $number, string $one, string $few, string $many): string
+{
+    $abs = abs($number) % 100;
+
+    if ($abs > 10 && $abs < 20) {
+        return $many;
+    }
+
+    return match ($abs % 10) {
+        1       => $one,
+        2, 3, 4 => $few,
+        default => $many,
     };
 }
