@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ER-диаграмма «Хвост и Лапы»</title>
+    <!--
+        Генератор backend/database/er_diagram.png.
+
+        mermaid-cli в системе нет, поэтому диаграмма рисуется обычным HTML
+        и снимается браузером в headless-режиме:
+
+            php -S 127.0.0.1:8088 -t .
+            powershell -NoProfile -ExecutionPolicy Bypass -File tools/er_diagram.ps1
+
+        Текстовый источник той же схемы — backend/database/er_diagram.mmd.
+    -->
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 28px 32px 24px;
+            width: 1180px;
+            background: #fff;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #1f2933;
+        }
+
+        h1 { margin: 0 0 4px; font-size: 25px; }
+        p.sub { margin: 0 0 22px; color: #6b7280; font-size: 15px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 46px 64px;
+        }
+
+        .entity {
+            border: 1px solid #cfd6dd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .entity__title {
+            padding: 9px 14px;
+            background: #2e7d5b;
+            color: #fff;
+            font-weight: 700;
+            font-size: 17px;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+
+        td {
+            padding: 6px 12px;
+            border-top: 1px solid #eef1f4;
+            vertical-align: top;
+        }
+
+        td.name { font-weight: 600; white-space: nowrap; }
+        td.type { color: #6b7280; white-space: nowrap; width: 92px; }
+        td.key  { white-space: nowrap; width: 34px; text-align: center; }
+        td.note { color: #6b7280; font-size: 13px; }
+
+        .rel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: -26px 0;
+            padding: 0 12px;
+            color: #2e7d5b;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            background: #fff;
+            z-index: 2;
+        }
+
+        .rel::before,
+        .rel::after {
+            content: "";
+            flex: 1;
+            border-top: 1px dashed #9bb8ab;
+        }
+
+        .legend {
+            margin-top: 26px;
+            padding-top: 14px;
+            border-top: 1px solid #eef1f4;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.8;
+        }
+
+        .legend b { color: #1f2933; }
+    </style>
+</head>
+<body>
+
+<h1>ER-диаграмма портала «Хвост и Лапы»</h1>
+<p class="sub">Ветеринарная клиника, онлайн-запись на приём · модули 1 и 3 · СУБД PostgreSQL</p>
+
+<div class="grid">
+
+    <div class="entity">
+        <div class="entity__title">users — пользователи портала</div>
+        <table>
+            <tr><td class="key">PK</td><td class="name">id</td><td class="type">SERIAL</td><td class="note"></td></tr>
+            <tr><td class="key">UK</td><td class="name">login</td><td class="type">VARCHAR(50)</td><td class="note">латиница и цифры, от 6 символов</td></tr>
+            <tr><td class="key"></td><td class="name">password</td><td class="type">VARCHAR(255)</td><td class="note">хеш password_hash</td></tr>
+            <tr><td class="key"></td><td class="name">full_name</td><td class="type">VARCHAR(150)</td><td class="note">ФИО кириллицей</td></tr>
+            <tr><td class="key"></td><td class="name">phone</td><td class="type">VARCHAR(20)</td><td class="note">+7(XXX)XXX-XX-XX</td></tr>
+            <tr><td class="key">UK</td><td class="name">email</td><td class="type">VARCHAR(120)</td><td class="note"></td></tr>
+            <tr><td class="key"></td><td class="name">role</td><td class="type">VARCHAR(10)</td><td class="note">user или admin</td></tr>
+            <tr><td class="key"></td><td class="name">created_at</td><td class="type">TIMESTAMP</td><td class="note"></td></tr>
+        </table>
+    </div>
+
+    <div class="entity">
+        <div class="entity__title">pets — питомцы владельца</div>
+        <table>
+            <tr><td class="key">PK</td><td class="name">id</td><td class="type">SERIAL</td><td class="note"></td></tr>
+            <tr><td class="key">FK</td><td class="name">user_id</td><td class="type">INTEGER</td><td class="note">→ users(id), каскад</td></tr>
+            <tr><td class="key">UK</td><td class="name">name</td><td class="type">VARCHAR(100)</td><td class="note">кличка, уникальна у владельца</td></tr>
+            <tr><td class="key"></td><td class="name">animal_type</td><td class="type">VARCHAR(50)</td><td class="note">из справочника</td></tr>
+            <tr><td class="key"></td><td class="name">breed</td><td class="type">VARCHAR(100)</td><td class="note">порода, может быть NULL</td></tr>
+            <tr><td class="key"></td><td class="name">birth_date</td><td class="type">DATE</td><td class="note">не позже сегодняшнего дня</td></tr>
+            <tr><td class="key"></td><td class="name">note</td><td class="type">VARCHAR(255)</td><td class="note">аллергии, характер</td></tr>
+            <tr><td class="key"></td><td class="name">created_at</td><td class="type">TIMESTAMP</td><td class="note"></td></tr>
+        </table>
+    </div>
+
+    <div class="rel">1 — N · заводит питомцев</div>
+    <div class="rel">1 — N · питомец записывается на приём</div>
+
+    <div class="entity">
+        <div class="entity__title">applications — заявки на приём</div>
+        <table>
+            <tr><td class="key">PK</td><td class="name">id</td><td class="type">SERIAL</td><td class="note"></td></tr>
+            <tr><td class="key">FK</td><td class="name">user_id</td><td class="type">INTEGER</td><td class="note">→ users(id), каскад</td></tr>
+            <tr><td class="key">FK</td><td class="name">pet_id</td><td class="type">INTEGER</td><td class="note">→ pets(id), запрет удаления</td></tr>
+            <tr><td class="key"></td><td class="name">service</td><td class="type">VARCHAR(200)</td><td class="note">из справочника</td></tr>
+            <tr><td class="key"></td><td class="name">appt_date</td><td class="type">DATE</td><td class="note">не раньше сегодня</td></tr>
+            <tr><td class="key"></td><td class="name">appt_time</td><td class="type">VARCHAR(5)</td><td class="note">09:00–20:00</td></tr>
+            <tr><td class="key"></td><td class="name">payment_method</td><td class="type">VARCHAR(30)</td><td class="note">наличные или карта в клинике</td></tr>
+            <tr><td class="key"></td><td class="name">status</td><td class="type">VARCHAR(20)</td><td class="note">Новая / Подтверждена / Приём завершён / Отменена</td></tr>
+            <tr><td class="key"></td><td class="name">created_at</td><td class="type">TIMESTAMP</td><td class="note"></td></tr>
+        </table>
+    </div>
+
+    <div class="entity">
+        <div class="entity__title">reviews — отзывы о клинике</div>
+        <table>
+            <tr><td class="key">PK</td><td class="name">id</td><td class="type">SERIAL</td><td class="note"></td></tr>
+            <tr><td class="key">FK<br>UK</td><td class="name">application_id</td><td class="type">INTEGER</td><td class="note">→ applications(id), каскад; один отзыв на заявку</td></tr>
+            <tr><td class="key">FK</td><td class="name">user_id</td><td class="type">INTEGER</td><td class="note">→ users(id), автор отзыва</td></tr>
+            <tr><td class="key"></td><td class="name">review</td><td class="type">TEXT</td><td class="note">текст отзыва</td></tr>
+            <tr><td class="key"></td><td class="name">rating</td><td class="type">SMALLINT</td><td class="note">1–5 либо NULL</td></tr>
+            <tr><td class="key"></td><td class="name">created_at</td><td class="type">TIMESTAMP</td><td class="note"></td></tr>
+        </table>
+    </div>
+
+    <div class="rel">1 — N · оформляет заявки</div>
+    <div class="rel">1 — 0..1 · не более одного отзыва</div>
+
+</div>
+
+<div class="legend">
+    <b>PK</b> — первичный ключ · <b>FK</b> — внешний ключ · <b>UK</b> — уникальное значение<br>
+    Модуль 3: питомцы вынесены в отдельную таблицу <b>pets</b>; в заявке хранится ссылка
+    на питомца, а не копия клички. Питомца с заявками удалить нельзя
+    (<span>ON DELETE RESTRICT</span>).<br>
+    Связи с <b>users</b>: <b>reviews.user_id</b> — автор отзыва;
+    отзыв доступен только после завершения приёма и только один раз.
+</div>
+
+</body>
+</html>
