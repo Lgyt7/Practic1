@@ -1,6 +1,7 @@
 -- =====================================================================
 -- Портал «Хвост и Лапы» — ветеринарная клиника, онлайн-запись на приём
 -- Модуль 1. Проектирование и разработка информационных систем
+-- Модуль 3. Проектирование, разработка и оптимизация веб-приложений
 -- СУБД: PostgreSQL
 -- Файл: backend/database/dump.sql
 -- =====================================================================
@@ -10,6 +11,7 @@ BEGIN;
 -- Таблицы удаляются в обратном порядке зависимостей.
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS applications;
+DROP TABLE IF EXISTS pets;
 DROP TABLE IF EXISTS users;
 
 -- ---------------------------------------------------------------------
@@ -41,13 +43,56 @@ COMMENT ON COLUMN users.password     IS 'Хеш пароля (password_hash), о
 COMMENT ON COLUMN users.role         IS 'Роль: user — владелец питомца, admin — администратор';
 
 -- ---------------------------------------------------------------------
+-- pets — питомцы владельца
+-- Заполняется один раз в профиле, при записи на приём питомец
+-- выбирается из этого списка, а не вводится заново.
+-- ---------------------------------------------------------------------
+CREATE TABLE pets (
+    id          SERIAL       PRIMARY KEY,
+    user_id     INTEGER      NOT NULL,
+    name        VARCHAR(100) NOT NULL,
+    animal_type VARCHAR(50)  NOT NULL,
+    breed       VARCHAR(100),
+    birth_date  DATE,
+    note        VARCHAR(255),
+    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT pets_user_fk
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    -- У одного владельца не может быть двух питомцев с одинаковой кличкой:
+    -- иначе в списке выбора они неразличимы.
+    CONSTRAINT pets_user_name_uniq UNIQUE (user_id, name),
+
+    CONSTRAINT pets_name_check
+        CHECK (name ~ '^.{1,100}$'),
+
+    -- Вид животного выбирается из справочника
+    CONSTRAINT pets_animal_type_check
+        CHECK (animal_type IN ('кошка', 'собака', 'грызун', 'птица', 'другое')),
+
+    -- Дата рождения питомца не может быть в будущем.
+    CONSTRAINT pets_birth_date_check
+        CHECK (birth_date IS NULL OR birth_date <= CURRENT_DATE)
+);
+
+CREATE INDEX pets_user_idx ON pets (user_id);
+
+COMMENT ON TABLE  pets             IS 'Питомцы владельцев: заполняются в профиле один раз';
+COMMENT ON COLUMN pets.user_id    IS 'Владелец питомца';
+COMMENT ON COLUMN pets.name       IS 'Кличка питомца, уникальна в пределах владельца';
+COMMENT ON COLUMN pets.animal_type IS 'Вид животного из справочника: кошка, собака, грызун, птица, другое';
+COMMENT ON COLUMN pets.birth_date IS 'Дата рождения питомца либо NULL';
+COMMENT ON COLUMN pets.note       IS 'Заметка владельца о питомце: аллергии, характер, пожелания';
+
+-- ---------------------------------------------------------------------
 -- applications — заявки на приём
 -- ---------------------------------------------------------------------
 CREATE TABLE applications (
     id              SERIAL        PRIMARY KEY,
     user_id         INTEGER       NOT NULL,
-    pet_name        VARCHAR(100)  NOT NULL,
-    animal_type     VARCHAR(50)   NOT NULL,
+    pet_id          INTEGER       NOT NULL,
     service         VARCHAR(200)  NOT NULL,
     appt_date       DATE          NOT NULL,
     appt_time       VARCHAR(5)    NOT NULL,
@@ -59,16 +104,20 @@ CREATE TABLE applications (
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE CASCADE ON UPDATE CASCADE,
 
+    -- Питомец удаляется из профиля только вместе с заявками,
+    -- поэтому в заявке хранится ссылка, а не копия клички.
+    -- RESTRICT запрещает удалить питомца, у которого уже есть заявки:
+    -- иначе записи в панели администратора остались бы без питомца.
+    CONSTRAINT applications_pet_fk
+        FOREIGN KEY (pet_id) REFERENCES pets (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
     CONSTRAINT applications_time_check
         CHECK (appt_time ~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$'),
 
     -- Клиника работает с 09:00 до 20:00
     CONSTRAINT applications_time_range_check
         CHECK (appt_time >= '09:00' AND appt_time <= '20:00'),
-
-    -- Вид животного выбирается из справочника
-    CONSTRAINT applications_animal_type_check
-        CHECK (animal_type IN ('кошка', 'собака', 'грызун', 'птица', 'другое')),
 
     -- Услуга выбирается из справочника
     CONSTRAINT applications_service_check
@@ -83,13 +132,14 @@ CREATE TABLE applications (
 
 CREATE INDEX applications_user_idx  ON applications (user_id);
 CREATE INDEX applications_status_idx ON applications (status);
+CREATE INDEX applications_pet_idx   ON applications (pet_id);
 
 COMMENT ON TABLE  applications              IS 'Заявки владельцев питомцев на приём в клинику';
 COMMENT ON COLUMN applications.user_id      IS 'Владелец питомца';
-COMMENT ON COLUMN applications.animal_type IS 'Вид животного из справочника: кошка, собака, грызун, птица, другое';
+COMMENT ON COLUMN applications.pet_id       IS 'Питомец из профиля владельца';
 COMMENT ON COLUMN applications.service     IS 'Услуга из справочника: первичный осмотр, вакцинация, стрижка когтей, УЗИ';
 COMMENT ON COLUMN applications.appt_time   IS 'Время приёма ЧЧ:ММ в пределах работы клиники 09:00–20:00';
-COMMENT ON COLUMN applications.status       IS 'Новая → Подтверждена → Приём завершён | Отменена';
+COMMENT ON COLUMN applications.status       IS 'Новая → Подтверждена → Приём завершён | Отменена. «Новую» заявку отменяет и владелец';
 COMMENT ON COLUMN applications.payment_method IS 'Наличными или Картой в клинике';
 
 -- ---------------------------------------------------------------------

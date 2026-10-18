@@ -14,29 +14,27 @@ if (!isPost()) {
     redirect('frontend/application_create.php');
 }
 
-$petName    = post('pet_name');
-$animalType = post('animal_type');
-$service    = post('service');
-$apptDate   = post('appt_date');
-$apptTime   = post('appt_time');
-$payment    = post('payment_method');
+$petId   = post('pet_id');
+$service = post('service');
+$apptDate = post('appt_date');
+$apptTime = post('appt_time');
+$payment = post('payment_method');
 
 setOld([
-    'pet_name'       => $petName,
-    'animal_type'    => $animalType,
+    'pet_id'         => $petId,
     'service'        => $service,
     'appt_date'      => $apptDate,
     'appt_time'      => $apptTime,
     'payment_method' => $payment,
 ]);
 
-// Вид животного и услуга принимаются только из справочников
-// (backend/config.php) — свободный текст отклоняется сервером.
+// Услуга принимается только из справочника (backend/config.php),
+// свободный текст отклоняется сервером.
 $validator = Validator::make($_POST)
-    ->text('pet_name', 'Кличка питомца', 1, 100)
-    ->inList('animal_type', ANIMAL_TYPES, 'Вид животного')
+    ->id('pet_id', 'Питомец')
     ->inList('service', SERVICES, 'Услуга')
     ->date('appt_date')
+    ->notInPast('appt_date', 'Дата приёма')
     ->time('appt_time')
     ->paymentMethod();
 
@@ -45,18 +43,16 @@ if ($validator->fails()) {
     redirect('frontend/application_create.php');
 }
 
-// Дата приёма не может быть в прошлом.
-$date = DateTime::createFromFormat('!d.m.Y', $apptDate);
-
-if ($date < new DateTime('today')) {
-    setErrors(['appt_date' => 'Дата приёма не может быть в прошлом.']);
+// Питомец должен принадлежать владельцу: подсунутый чужой id
+// не должен превращаться в запись на чужого питомца.
+if (Pet::findForUser((int) $petId, (int) Auth::id()) === null) {
+    setErrors(['pet_id' => 'Выберите питомца из своего профиля.']);
     redirect('frontend/application_create.php');
 }
 
 Application::create(
     (int) Auth::id(),
-    $petName,
-    $animalType,
+    (int) $petId,
     $service,
     $apptDate,
     $apptTime,

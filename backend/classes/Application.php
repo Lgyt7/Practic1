@@ -4,6 +4,7 @@ declare(strict_types=1);
 /**
  * Модель заявки на приём.
  * Жизненный цикл: «Новая» → «Подтверждена» → «Приём завершён» | «Отменена».
+ * Заявку в статусе «Новая» может отменить и владелец, и администратор.
  */
 final class Application
 {
@@ -29,8 +30,7 @@ final class Application
     /** Создание заявки. Статус автоматически «Новая». */
     public static function create(
         int $userId,
-        string $petName,
-        string $animalType,
+        int $petId,
         string $service,
         string $apptDate,
         string $apptTime,
@@ -38,13 +38,12 @@ final class Application
     ): int {
         return Database::insert(
             'INSERT INTO applications
-                (user_id, pet_name, animal_type, service, appt_date, appt_time, payment_method, status)
+                (user_id, pet_id, service, appt_date, appt_time, payment_method, status)
              VALUES
-                (:user_id, :pet_name, :animal_type, :service, :appt_date, :appt_time, :payment_method, :status)',
+                (:user_id, :pet_id, :service, :appt_date, :appt_time, :payment_method, :status)',
             [
                 'user_id'        => $userId,
-                'pet_name'       => $petName,
-                'animal_type'    => $animalType,
+                'pet_id'         => $petId,
                 'service'        => $service,
                 'appt_date'      => $apptDate,
                 'appt_time'      => $apptTime,
@@ -54,13 +53,27 @@ final class Application
         );
     }
 
-    /** Все заявки конкретного пользователя. */
+    /**
+     * Заявки пользователя вместе с питомцами и отзывами.
+     *
+     * Отзыв подтягивается LEFT JOIN, а не отдельным запросом на каждую
+     * карточку: при десяти заявках было бы десять обращений к базе.
+     * На заявку отзыв один (reviews_application_uniq), поэтому строка
+     * всегда не более чем одна.
+     */
     public static function forUser(int $userId): array
     {
         return Database::fetchAll(
             'SELECT a.*,
-                    (SELECT COUNT(*) FROM reviews r WHERE r.application_id = a.id) AS has_review
+                    p.name        AS pet_name,
+                    p.animal_type,
+                    p.breed,
+                    r.id          AS review_id,
+                    r.review      AS review_text,
+                    r.rating      AS review_rating
                FROM applications a
+               JOIN pets p        ON p.id = a.pet_id
+               LEFT JOIN reviews r ON r.application_id = a.id
               WHERE a.user_id = :user_id
               ORDER BY a.appt_date DESC, a.appt_time DESC, a.id DESC',
             ['user_id' => $userId]
@@ -101,7 +114,7 @@ final class Application
             //
             // ESCAPE '!' — чтобы «%» и «_» в поисковой строке искались
             // как обычные символы, а не как служебные шаблоны LIKE.
-            $where[] = "(a.pet_name ILIKE :query_pet ESCAPE '" . self::LIKE_ESCAPE . "'"
+            $where[] = "(p.name ILIKE :query_pet ESCAPE '" . self::LIKE_ESCAPE . "'"
                 . " OR u.full_name ILIKE :query_owner ESCAPE '" . self::LIKE_ESCAPE . "')";
 
             $like = '%' . self::escapeLike($query) . '%';
@@ -112,11 +125,13 @@ final class Application
 
         $clause = $where === [] ? '' : (' WHERE ' . implode(' AND ', $where));
 
-        // Общее количество записей — для расчёта числа страниц.
-        $total = (int) (Database::fetchOne(
-            'SELECT COUNT(*) AS n FROM applications a JOIN users u ON u.id = a.user_id' . $clause,
-            $params
-        )['n'] ?? 0);
+        // Питомец нужен и фильтрам, и выборке — присоединяем в обоих запросах.
+        $from = ' FROM applications a
+                  JOIN users u ON u.id = a.user_id
+                  JOIN pets p  ON p.id = a.pet_id';
+
+        // Общее количество записей — для расчёта числа страницы.
+        $total = (int) (Database::fetchOne('SELECT COUNT(*) AS n' . $from . $clause, $params)['n'] ?? 0);
 
         $perPage = max(1, ADMIN_PAGE_SIZE);
         $pages   = max(1, (int) ceil($total / $perPage));
@@ -125,16 +140,17 @@ final class Application
 
         $sql = <<<'SQL'
             SELECT a.*,
+                   p.name        AS pet_name,
+                   p.animal_type,
+                   p.breed,
                    u.full_name,
                    u.login,
                    u.phone,
                    u.email,
                    (SELECT COUNT(*) FROM reviews r WHERE r.application_id = a.id) AS has_review
-              FROM applications a
-              JOIN users u ON u.id = a.user_id
             SQL;
 
-        $sql .= $clause;
+        $sql .= $from . $clause;
 
         $sql .= <<<'SQL'
 
@@ -163,9 +179,10 @@ final class Application
     public static function findById(int $id): ?array
     {
         return Database::fetchOne(
-            'SELECT a.*, u.full_name, u.login
+            'SELECT a.*, p.name AS pet_name, p.animal_type, u.full_name, u.login
                FROM applications a
-               JOIN users u ON u.id = a.user_id
+               JOIN pets p        ON p.id = a.pet_id
+               JOIN users u       ON u.id = a.user_id
               WHERE a.id = :id',
             ['id' => $id]
         );
@@ -205,7 +222,41 @@ final class Application
         return null;
     }
 
-    /** Статусы, доступные из текущего. */
+    /**
+     * Отмена заявки самим владельцем.
+     *
+     * Возвращает текст ошибки либо null при успехе. Чужая заявка и заявка
+     * не в статусе «Новая» отклоняются одинаково — по перебору идентификаторов
+     * владелец не должен узнавать, что заявка № существует и кому принадлежит.
+     */
+    public static function cancelByUser(int $id, int $userId): ?string
+    {
+        $application = Database::fetchOne(
+            'SELECT status, user_id FROM applications WHERE id = :id',
+            ['id' => $id]
+        );
+
+        if ($application === null || (int) $application['user_id'] !== $userId) {
+            return 'Заявка не найдена.';
+        }
+
+        if ($application['status'] !== STATUS_NEW) {
+            return sprintf(
+                'Отменить можно только заявку со статусом «%s». Текущий статус — «%s».',
+                STATUS_NEW,
+                $application['status']
+            );
+        }
+
+        Database::execute(
+            'UPDATE applications SET status = :status WHERE id = :id AND status = :current',
+            ['status' => STATUS_CANCELLED, 'id' => $id, 'current' => STATUS_NEW]
+        );
+
+        return null;
+    }
+
+    /** Статусы, доступные из текущего (панель администратора). */
     public static function availableTransitions(string $current): array
     {
         return STATUS_TRANSITIONS[$current] ?? [];
@@ -215,6 +266,12 @@ final class Application
     public static function canReview(string $status): bool
     {
         return $status === STATUS_FOR_REVIEW;
+    }
+
+    /** Разрешено ли владельцу отменить заявку. */
+    public static function canCancel(string $status): bool
+    {
+        return $status === STATUS_NEW;
     }
 
     /** Счётчики заявок по статусам (панель администратора). */

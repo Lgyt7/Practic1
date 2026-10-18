@@ -34,6 +34,10 @@ final class Database
     /**
      * Подготовить и выполнить запрос.
      *
+     * Значение null передаётся как SQL NULL, а не как пустая строка:
+     * для этого у PHP есть отдельный тип PDO::PARAM_NULL, а PDO::PARAM_STR
+     * молча превратил бы null в ''.
+     *
      * @param string              $sql    запрос с плейсхолдерами
      * @param array<string,mixed> $params значения для подстановки
      * @param array<string,int>   $types  типы PDO::PARAM_* (нужны для LIMIT/OFFSET)
@@ -43,6 +47,11 @@ final class Database
         $stmt = self::getConnection()->prepare($sql);
 
         foreach ($params as $key => $value) {
+            if ($value === null) {
+                $stmt->bindValue(':' . $key, null, PDO::PARAM_NULL);
+                continue;
+            }
+
             $stmt->bindValue(':' . $key, $value, $types[$key] ?? PDO::PARAM_STR);
         }
 

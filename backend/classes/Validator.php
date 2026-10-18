@@ -140,7 +140,18 @@ final class Validator
         return $this;
     }
 
-    /** Дата приёма: текстовое поле в формате ДД.ММ.ГГГГ. */
+    /**
+     * Дата в формате ГГГГ-ММ-ДД — именно такой формат отдаёт
+     * нативное поле <input type="date"> и понимает PostgreSQL.
+     */
+    public static function isDate(string $value): bool
+    {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+        return $date !== false && $date->format('Y-m-d') === $value;
+    }
+
+    /** Дата приёма: обязательное поле в формате ГГГГ-ММ-ДД. */
     public function date(string $field = 'appt_date', string $label = 'Дата приёма'): self
     {
         $value = $this->value($field);
@@ -149,16 +160,52 @@ final class Validator
             return $this->add($field, "Поле «{$label}» обязательно для заполнения.");
         }
 
-        $date = DateTime::createFromFormat('!d.m.Y', $value);
-
-        if (!$date || $date->format('d.m.Y') !== $value) {
-            return $this->add($field, 'Дата приёма в формате ДД.ММ.ГГГГ, например 15.06.2026.');
+        if (!self::isDate($value)) {
+            return $this->add($field, "Поле «{$label}»: ожидается дата в формате ГГГГ-ММ-ДД.");
         }
 
         return $this;
     }
 
-    /** Время приёма: текстовое поле в формате ЧЧ:ММ. */
+    /** Необязательная дата: пустое значение допустимо, мусорное — нет. */
+    public function optionalDate(string $field, string $label): self
+    {
+        $value = $this->value($field);
+
+        if ($value === '') {
+            return $this;
+        }
+
+        if (!self::isDate($value)) {
+            return $this->add($field, "Поле «{$label}»: ожидается дата в формате ГГГГ-ММ-ДД.");
+        }
+
+        return $this;
+    }
+
+    /** Дата не в прошлом — проверка отдельная от формата: смысл другой. */
+    public function notInPast(string $field, string $label): self
+    {
+        $value = $this->value($field);
+
+        if ($value === '' || !self::isDate($value)) {
+            return $this;
+        }
+
+        if ($value < date('Y-m-d')) {
+            return $this->add($field, "Поле «{$label}»: дата не может быть в прошлом.");
+        }
+
+        return $this;
+    }
+
+    /**
+     * Время приёма: обязательное поле в формате ЧЧ:ММ в часы работы клиники.
+     *
+     * На клиенте тот же диапазон проверяют атрибуты min/max/step поля
+     * <input type="time">, но браузеру доверять нельзя — значение приходит
+     * обычной строкой и проверяется здесь повторно.
+     */
     public function time(string $field = 'appt_time', string $label = 'Время приёма'): self
     {
         $value = $this->value($field);
@@ -167,16 +214,12 @@ final class Validator
             return $this->add($field, "Поле «{$label}» обязательно для заполнения.");
         }
 
-        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $value)) {
-            return $this->add($field, 'Время приёма в формате ЧЧ:ММ, например 10:30.');
+        if (!Schedule::isValidTime($value)) {
+            return $this->add($field, "Поле «{$label}»: ожидается время в формате ЧЧ:ММ, например 10:30.");
         }
 
-        // Приём возможен только в часы работы клиники.
-        if ($value < CLINIC_OPEN || $value > CLINIC_CLOSE) {
-            return $this->add(
-                $field,
-                sprintf('Клиника работает с %s до %s. Выберите время в этом диапазоне.', CLINIC_OPEN, CLINIC_CLOSE)
-            );
+        if (!Schedule::isOpenTime($value)) {
+            return $this->add($field, Schedule::outsideReason());
         }
 
         return $this;
@@ -205,7 +248,27 @@ final class Validator
         return $this;
     }
 
-    /** Строка произвольной длины: обязательна, minLength…maxLength. */
+    /**
+ * Идентификатор записи: положительное целое число.
+ * Право на запись проверяется отдельно — числовой формат
+ * ничего не говорит о том, кому она принадлежит.
+ */
+public function id(string $field, string $label): self
+{
+    $value = $this->value($field);
+
+    if ($value === '') {
+        return $this->add($field, "Выберите значение поля «{$label}».");
+    }
+
+    if (!ctype_digit($value) || (int) $value < 1) {
+        return $this->add($field, "Поле «{$label}»: ожидается положительное число.");
+    }
+
+    return $this;
+}
+
+/** Строка произвольной длины: обязательна, minLength…maxLength. */
     public function text(
         string $field,
         string $label,
@@ -227,6 +290,25 @@ final class Validator
 
         if ($multiline && mb_strpos($value, "\n") !== false) {
             return $this->add($field, "Поле «{$label}» не должно содержать переносы строк.");
+        }
+
+        return $this;
+    }
+
+    /**
+     * Необязательная строка: пустое значение допустимо,
+     * но если значение есть — длина проверяется.
+     */
+    public function optionalText(string $field, string $label, int $max = 255): self
+    {
+        $value = $this->value($field);
+
+        if ($value === '') {
+            return $this;
+        }
+
+        if (mb_strlen($value, 'UTF-8') > $max) {
+            return $this->add($field, "Поле «{$label}»: длина не должна превышать {$max} символов.");
         }
 
         return $this;

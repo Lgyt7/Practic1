@@ -47,10 +47,11 @@ final class Review
     public static function latest(int $limit = 5): array
     {
         return Database::fetchAll(
-            'SELECT r.*, u.full_name, a.pet_name, a.service
+            'SELECT r.*, u.full_name, p.name AS pet_name, a.service
                FROM reviews r
-               JOIN users u ON u.id = r.user_id
+               JOIN users u       ON u.id = r.user_id
                JOIN applications a ON a.id = r.application_id
+               JOIN pets p        ON p.id = a.pet_id
               ORDER BY r.created_at DESC
               LIMIT :limit',
             ['limit' => $limit],

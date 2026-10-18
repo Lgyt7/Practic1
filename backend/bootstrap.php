@@ -134,6 +134,22 @@ function oldValue(array $old, string $key, string $default = ''): string
     return (string) ($old[$key] ?? $default);
 }
 
+/**
+ * Дата из базы (ГГГГ-ММ-ДД) в привычный пользователю вид: 15.06.2026.
+ * В форме нативное поле type="date" требует ISO-формат,
+ * а читать запись на странице удобнее в привычном.
+ */
+function formatDate(string $value): string
+{
+    if ($value === '') {
+        return '';
+    }
+
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', substr($value, 0, 10));
+
+    return $date === false ? $value : $date->format('d.m.Y');
+}
+
 /** Собрать абсолютный URL страницы приложения. */
 function url(string $path = ''): string
 {

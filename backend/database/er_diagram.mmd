@@ -15,11 +15,21 @@ erDiagram
         timestamp     created_at "дата регистрации"
     }
 
+    pets {
+        serial        id PK
+        integer       user_id FK "владелец"
+        varchar(100)  name UK "кличка, уникальна у владельца"
+        varchar(50)   animal_type "вид животного"
+        varchar(100)  breed "порода, может быть NULL"
+        date          birth_date "дата рождения или NULL"
+        varchar(255)  note "заметка: аллергии, характер"
+        timestamp     created_at "дата добавления"
+    }
+
     applications {
         serial        id PK
         integer       user_id FK "владелец питомца"
-        varchar(100)  pet_name "кличка"
-        varchar(50)   animal_type "вид животного"
+        integer       pet_id FK "питомец из профиля"
         varchar(200)  service "услуга"
         date          appt_date "дата приёма"
         varchar(5)    appt_time "время приёма ЧЧ:ММ"
@@ -37,6 +47,8 @@ erDiagram
         timestamp     created_at "дата отзыва"
     }
 
+    users ||--o{ pets : "заводит питомцев"
     users ||--o{ applications : "оформляет заявки"
     users ||--o{ reviews : "оставляет отзывы"
+    pets ||--o{ applications : "записывается на приём"
     applications ||--o| reviews : "по заявке не более одного отзыва"
