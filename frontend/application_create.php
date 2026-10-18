@@ -47,11 +47,11 @@ require __DIR__ . '/partials/header.php';
                 </p>
 
                 <?php foreach ($__errors as $__message): ?>
-                    <div class="alert alert--danger" data-toast>
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        <span><?= e($__message) ?></span>
-                        <button type="button" class="alert__close" aria-label="Закрыть">&times;</button>
-                    </div>
+                    <?php
+                    $__alertType = 'danger';
+                    $__alertText = $__message;
+                    require __DIR__ . '/partials/alert.php';
+                    ?>
                 <?php endforeach; ?>
 
                 <a class="btn btn--primary" href="<?= url('frontend/pets.php') ?>">

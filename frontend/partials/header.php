@@ -89,10 +89,10 @@ $__here    = basename($_SERVER['SCRIPT_NAME'] ?? '');
 -->
 <div class="notifications" data-toasts>
     <?php foreach ($__flashes as $__flash): ?>
-        <div class="alert alert--<?= e($__flash['type']) ?>" data-toast>
-            <i class="bi <?= $__flash['type'] === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' ?>"></i>
-            <span><?= e($__flash['text']) ?></span>
-            <button type="button" class="alert__close" aria-label="Закрыть">&times;</button>
-        </div>
+        <?php
+        $__alertType = $__flash['type'];
+        $__alertText = $__flash['text'];
+        require __DIR__ . '/alert.php';
+        ?>
     <?php endforeach; ?>
 </div>

@@ -44,16 +44,6 @@ final class Validator
         return is_string($value) ? trim($value) : '';
     }
 
-    /** Проверка на пустое значение. */
-    public function required(string $field, string $label): self
-    {
-        if ($this->value($field) === '') {
-            $this->add($field, "Поле «{$label}» обязательно для заполнения.");
-        }
-
-        return $this;
-    }
-
     /** Логин: латиница и цифры, не менее 6 символов. */
     public function login(string $field = 'login', string $label = 'Логин'): self
     {
@@ -325,16 +315,6 @@ public function id(string $field, string $label): self
 
         if (!in_array($value, [PAYMENT_CASH, PAYMENT_CARD], true)) {
             return $this->add($field, 'Способ оплаты: наличными или картой в клинике.');
-        }
-
-        return $this;
-    }
-
-    /** Совпадение пароля с подтверждением. */
-    public function matches(string $field, string $other, string $message): self
-    {
-        if (($this->data[$field] ?? '') !== ($this->data[$other] ?? '')) {
-            return $this->add($other, $message);
         }
 
         return $this;

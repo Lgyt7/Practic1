@@ -27,12 +27,6 @@ final class Schedule
         return CLINIC_CLOSE;
     }
 
-    /** Диапазон работы коротко: «09:00–20:00». */
-    public static function range(): string
-    {
-        return self::open() . '–' . self::close();
-    }
-
     /** Пояснение для пользователя: «Клиника работает с 09:00 до 20:00». */
     public static function hint(): string
     {

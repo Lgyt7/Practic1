@@ -21,9 +21,11 @@ $__pageTitle = 'Мои питомцы';
 $__errors    = takeErrors();
 $__old       = takeOld();
 
-$__pets  = Pet::forUser(Auth::id());
-$__value = static fn (string $field): string => oldValue($__old, $field);
-$__error = static fn (string $field): ?string => $__errors[$field] ?? null;
+$__pets = Pet::forUser(Auth::id());
+
+// Имена хелперов те же, что на остальных страницах с формами.
+$value = static fn (string $field): string => oldValue($__old, $field);
+$error = static fn (string $field): ?string => $__errors[$field] ?? null;
 
 require __DIR__ . '/partials/header.php';
 ?>
@@ -133,67 +135,67 @@ require __DIR__ . '/partials/header.php';
 
                 <form method="post" action="<?= url('backend/actions/pet_create.php') ?>" novalidate data-validate>
 
-                    <div class="field<?= $__error('name') ? ' field--invalid' : '' ?>">
+                    <div class="field<?= $error('name') ? ' field--invalid' : '' ?>">
                         <label class="field__label" for="name">Кличка</label>
                         <span class="field__control">
                             <i class="bi bi-heart-fill field__control-icon"></i>
                             <input class="field__input field__input--icon" type="text" id="name" name="name"
-                                   value="<?= e($__value('name')) ?>" required maxlength="100" placeholder="Барсик">
+                                   value="<?= e($value('name')) ?>" required maxlength="100" placeholder="Барсик">
                         </span>
-                        <?php if ($__e = $__error('name')): ?>
+                        <?php if ($__e = $error('name')): ?>
                             <p class="field__error"><?= e($__e) ?></p>
                         <?php endif; ?>
                     </div>
 
-                    <div class="field<?= $__error('animal_type') ? ' field--invalid' : '' ?>">
+                    <div class="field<?= $error('animal_type') ? ' field--invalid' : '' ?>">
                         <label class="field__label" for="animal_type">Вид животного</label>
                         <select class="field__input" id="animal_type" name="animal_type" required>
                             <option value="">— выберите вид —</option>
                             <?php foreach (ANIMAL_TYPES as $__type): ?>
-                                <option value="<?= e($__type) ?>" <?= $__value('animal_type') === $__type ? 'selected' : '' ?>>
+                                <option value="<?= e($__type) ?>" <?= $value('animal_type') === $__type ? 'selected' : '' ?>>
                                     <?= e(ucfirst($__type)) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <?php if ($__e = $__error('animal_type')): ?>
+                        <?php if ($__e = $error('animal_type')): ?>
                             <p class="field__error"><?= e($__e) ?></p>
                         <?php endif; ?>
                     </div>
 
-                    <div class="field<?= $__error('breed') ? ' field--invalid' : '' ?>">
+                    <div class="field<?= $error('breed') ? ' field--invalid' : '' ?>">
                         <label class="field__label" for="breed">Порода</label>
                         <span class="field__control">
                             <i class="bi bi-tag field__control-icon"></i>
                             <input class="field__input field__input--icon" type="text" id="breed" name="breed"
-                                   value="<?= e($__value('breed')) ?>" maxlength="100" placeholder="Метис">
+                                   value="<?= e($value('breed')) ?>" maxlength="100" placeholder="Метис">
                         </span>
-                        <?php if ($__e = $__error('breed')): ?>
+                        <?php if ($__e = $error('breed')): ?>
                             <p class="field__error"><?= e($__e) ?></p>
                         <?php endif; ?>
                     </div>
 
-                    <div class="field<?= $__error('birth_date') ? ' field--invalid' : '' ?>">
+                    <div class="field<?= $error('birth_date') ? ' field--invalid' : '' ?>">
                         <label class="field__label" for="birth_date">Дата рождения</label>
                         <span class="field__control">
                             <i class="bi bi-cake2 field__control-icon"></i>
                             <input class="field__input field__input--icon" type="date" id="birth_date"
-                                   name="birth_date" value="<?= e($__value('birth_date')) ?>" max="<?= date('Y-m-d') ?>">
+                                   name="birth_date" value="<?= e($value('birth_date')) ?>" max="<?= date('Y-m-d') ?>">
                         </span>
                         <p class="field__hint">Необязательно: помогает врачу подобрать процедуру.</p>
-                        <?php if ($__e = $__error('birth_date')): ?>
+                        <?php if ($__e = $error('birth_date')): ?>
                             <p class="field__error"><?= e($__e) ?></p>
                         <?php endif; ?>
                     </div>
 
-                    <div class="field<?= $__error('note') ? ' field--invalid' : '' ?>">
+                    <div class="field<?= $error('note') ? ' field--invalid' : '' ?>">
                         <label class="field__label" for="note">Заметка</label>
                         <span class="field__control">
                             <i class="bi bi-sticky field__control-icon"></i>
                             <textarea class="field__input field__input--icon" id="note" name="note" rows="2"
                                       maxlength="<?= Pet::NOTE_MAX_LENGTH ?>"
-                                      placeholder="Аллергии, характер, пожелания"><?= e($__value('note')) ?></textarea>
+                                      placeholder="Аллергии, характер, пожелания"><?= e($value('note')) ?></textarea>
                         </span>
-                        <?php if ($__e = $__error('note')): ?>
+                        <?php if ($__e = $error('note')): ?>
                             <p class="field__error"><?= e($__e) ?></p>
                         <?php endif; ?>
                     </div>

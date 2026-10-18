@@ -22,18 +22,6 @@ final class Review
         );
     }
 
-    /** Отзывы по конкретной заявке. */
-    public static function forApplication(int $applicationId): ?array
-    {
-        return Database::fetchOne(
-            'SELECT r.*, u.full_name
-               FROM reviews r
-               JOIN users u ON u.id = r.user_id
-              WHERE r.application_id = :application_id',
-            ['application_id' => $applicationId]
-        );
-    }
-
     /** Есть ли уже отзыв по заявке. */
     public static function exists(int $applicationId): bool
     {

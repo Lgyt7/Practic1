@@ -40,10 +40,11 @@ require __DIR__ . '/partials/header.php';
 
         <?php /* Ошибки отправки форм (например, отказ в отзыве) — вне формы. */ ?>
         <?php foreach ($__errors as $__message): ?>
-            <div class="alert alert--danger" data-toast>
-                <i class="bi bi-exclamation-triangle-fill"></i> <?= e($__message) ?>
-                <button type="button" class="alert__close" aria-label="Закрыть">&times;</button>
-            </div>
+            <?php
+            $__alertType = 'danger';
+            $__alertText = $__message;
+            require __DIR__ . '/partials/alert.php';
+            ?>
         <?php endforeach; ?>
 
         <?php if ($__applications === []): ?>

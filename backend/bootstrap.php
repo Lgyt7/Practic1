@@ -132,7 +132,11 @@ function takeErrors(): array
     return $items;
 }
 
-/** Введённые значения: сохранить для повторного показа формы. */
+/**
+ * Введённые значения: сохранить для повторного показа формы.
+ * Поля паролей не сохраняются — иначе хеш или открытый пароль
+ * оказался бы в сессии и мог бы утечь через журнал.
+ */
 function setOld(array $data): void
 {
     unset($data['password'], $data['password_confirm']);
@@ -238,10 +242,13 @@ function currentUser(): ?array
     return $cache;
 }
 
-/** Есть ли у текущего пользователя роль администратора. */
-function currentUserIsAdmin(): bool
+/**
+ * Иконка bootstrap-icons для типа уведомления.
+ * Типы задаёт flash()/jsonResponse(), неизвестный трактуется как ошибка.
+ */
+function alertIcon(string $type): string
 {
-    return (currentUser()['role'] ?? '') === 'admin';
+    return $type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
 }
 
 /** Человекочитаемое представление статуса заявки → CSS-класс бейджа. */
