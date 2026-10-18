@@ -19,6 +19,9 @@ $__here    = basename($_SERVER['SCRIPT_NAME'] ?? '');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(APP_NAME) ?> — <?= e($__pageTitle ?? APP_TAGLINE) ?></title>
     <link rel="icon" href="<?= asset('img/logo.svg') ?>">
+    <!-- Класс .js позволяет CSS прятать блоки для анимации появления:
+         без работающего скрипта контент остаётся видимым. -->
+    <script>document.documentElement.className += ' js';</script>
     <link rel="stylesheet" href="<?= asset('vendor/bootstrap/css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= asset('vendor/bootstrap-icons/bootstrap-icons.min.css') ?>">
     <link rel="stylesheet" href="<?= asset('css/style.css') ?>">
@@ -44,6 +47,10 @@ $__here    = basename($_SERVER['SCRIPT_NAME'] ?? '');
                 <a class="nav__link<?= $__here === 'applications.php' ? ' nav__link--active' : '' ?>"
                    href="<?= url('frontend/applications.php') ?>">
                     <i class="bi bi-card-list"></i> Мои заявки
+                </a>
+                <a class="nav__link<?= $__here === 'pets.php' ? ' nav__link--active' : '' ?>"
+                   href="<?= url('frontend/pets.php') ?>">
+                    <i class="bi bi-heart"></i> Питомцы
                 </a>
                 <a class="nav__link<?= $__here === 'application_create.php' ? ' nav__link--active' : '' ?>"
                    href="<?= url('frontend/application_create.php') ?>">
@@ -75,14 +82,17 @@ $__here    = basename($_SERVER['SCRIPT_NAME'] ?? '');
     </div>
 </header>
 
-<?php if ($__flashes !== []): ?>
-    <div class="container">
-        <?php foreach ($__flashes as $__flash): ?>
-            <div class="alert alert--<?= e($__flash['type']) ?>" data-toast>
-                <i class="bi <?= $__flash['type'] === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' ?>"></i>
-                <span><?= e($__flash['text']) ?></span>
-                <button type="button" class="alert__close" aria-label="Закрыть">&times;</button>
-            </div>
-        <?php endforeach; ?>
-    </div>
-<?php endif; ?>
+<!--
+    Стек уведомлений. Сюда app.js переносит все блоки [data-toast]
+    (flash-сообщения, ошибки вне формы и ответы на fetch-запросы),
+    чтобы выезжающие уведомления выглядели одинаково везде.
+-->
+<div class="notifications" data-toasts>
+    <?php foreach ($__flashes as $__flash): ?>
+        <div class="alert alert--<?= e($__flash['type']) ?>" data-toast>
+            <i class="bi <?= $__flash['type'] === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' ?>"></i>
+            <span><?= e($__flash['text']) ?></span>
+            <button type="button" class="alert__close" aria-label="Закрыть">&times;</button>
+        </div>
+    <?php endforeach; ?>
+</div>

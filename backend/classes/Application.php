@@ -194,7 +194,7 @@ final class Application
      */
     public static function changeStatus(int $id, string $status): ?string
     {
-        if (!in_array($status, [STATUS_NEW, STATUS_CONFIRMED, STATUS_DONE, STATUS_CANCELLED], true)) {
+        if (!in_array($status, STATUSES, true)) {
             return 'Неизвестный статус заявки.';
         }
 
@@ -277,10 +277,7 @@ final class Application
     /** Счётчики заявок по статусам (панель администратора). */
     public static function countByStatus(): array
     {
-        $counts = array_fill_keys(
-            [STATUS_NEW, STATUS_CONFIRMED, STATUS_DONE, STATUS_CANCELLED],
-            0
-        );
+        $counts = array_fill_keys(STATUSES, 0);
 
         foreach (Database::fetchAll('SELECT status, COUNT(*) AS n FROM applications GROUP BY status') as $row) {
             $counts[$row['status']] = (int) $row['n'];

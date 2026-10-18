@@ -35,6 +35,9 @@ const STATUS_CANCELLED = 'Отменена';
 /** Статус, при котором пользователю доступна форма отзыва. */
 const STATUS_FOR_REVIEW = 'Приём завершён';
 
+/** Все статусы заявки — используются для проверок, фильтров и счётчиков. */
+const STATUSES = [STATUS_NEW, STATUS_CONFIRMED, STATUS_DONE, STATUS_CANCELLED];
+
 /* ---------- Способы оплаты ---------- */
 const PAYMENT_CASH = 'Наличными';
 const PAYMENT_CARD = 'Картой в клинике';

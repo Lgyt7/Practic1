@@ -78,6 +78,25 @@ function isPost(): bool
     return ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
 }
 
+/**
+ * Запрос сделан скриптом через fetch, а не обычной отправкой формы.
+ * Обработчики отвечают такому запросу JSON-ом, а не редиректом:
+ * страница не перезагружается, статус меняется на месте.
+ */
+function isAjax(): bool
+{
+    return ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
+}
+
+/** Ответ JSON и выход — для запросов из app.js. */
+function jsonResponse(array $data, int $code = 200): never
+{
+    http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 /** Чтение обрезанного значения из POST. */
 function post(string $key, string $default = ''): string
 {

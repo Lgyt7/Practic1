@@ -17,6 +17,47 @@ declare(strict_types=1);
 const BASE = 'http://127.0.0.1:8088';
 
 /**
+ * Подключение к базе для служебных запросов теста.
+ * Тот же PDO, что и у приложения: идентификаторы берутся из базы,
+ * а не угадываются по порядку вставки.
+ */
+function db(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo === null) {
+        require_once __DIR__ . '/../backend/config.php';
+
+        $pdo = new PDO(
+            'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME,
+            DB_USER,
+            DB_PASS,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+    }
+
+    return $pdo;
+}
+
+/** Идентификатор питомца по кличке. */
+function petId(string $name, string $login = 'petrov01'): int
+{
+    $stmt = db()->prepare(
+        'SELECT p.id FROM pets p JOIN users u ON u.id = p.user_id
+          WHERE p.name = :name AND u.login = :login'
+    );
+    $stmt->execute(['name' => $name, 'login' => $login]);
+
+    return (int) ($stmt->fetchColumn() ?: 0);
+}
+
+/** Идентификатор последней созданной заявки. */
+function lastApplicationId(): int
+{
+    return (int) db()->query('SELECT MAX(id) FROM applications')->fetchColumn();
+}
+
+/**
  * Сбросить базу к состоянию «структура + демо-данные».
  *
  * Тест проверяет сценарии, которые меняют данные (смена статуса,
@@ -25,22 +66,13 @@ const BASE = 'http://127.0.0.1:8088';
  */
 function resetDatabase(string $root): void
 {
-    require_once $root . '/backend/config.php';
-
     $dump = file_get_contents($root . '/backend/database/dump.sql');
 
     if ($dump === false) {
         exit('Не удалось прочитать dump.sql' . PHP_EOL);
     }
 
-    $pdo = new PDO(
-        'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME,
-        DB_USER,
-        DB_PASS,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-
-    $pdo->exec($dump);
+    db()->exec($dump);
 
     exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($root . '/backend/database/seed.php') . ' 2>&1');
 
@@ -167,14 +199,29 @@ request('/backend/actions/login.php', $jar, ['login' => 'petrov01', 'password' =
 
 $apps = page('/frontend/applications.php', 'applications.php — мои записи', $jar);
 $form = page('/frontend/application_create.php', 'application_create.php', $jar);
+$pets = page('/frontend/pets.php', 'pets.php — профиль питомцев', $jar);
 
 echo "  -- содержимое кабинета --" . PHP_EOL;
 has($apps, 'details__row', 'карточка заявки: список «ключ — значение»');
 has($apps, 'Оставить отзыв', 'форма отзыва доступна после «Приём завершён»');
 has($apps, 'Ваш отзыв', 'у одной заявки отзыв уже есть');
+has($apps, 'Отменить заявку', 'у заявки со статусом «Новая» есть кнопка отмены');
+has($apps, 'data-confirm', 'отмена заявки спрашивает подтверждение');
+has($apps, 'data-reveal', 'карточки заявок появляются с анимацией');
+
+echo "  -- содержимое формы записи --" . PHP_EOL;
 has($form, 'value="вакцинация"', 'форма записи: услуга из справочника');
-has($form, 'value="птица"', 'форма записи: вид животного из справочника');
-has($form, 'с 09:00 до 20:00', 'форма записи: подсказка о часах работы');
+has($form, 'Барсик', 'форма записи: питомец выбирается из профиля');
+has($form, 'type="date"', 'форма записи: нативный выбор даты');
+has($form, 'type="time"', 'форма записи: нативный выбор времени');
+has($form, 'min="' . CLINIC_OPEN . '"', 'форма записи: нижняя граница часов работы');
+has($form, 'max="' . CLINIC_CLOSE . '"', 'форма записи: верхняя граница часов работы');
+has($form, 'Клиника работает с 09:00 до 20:00', 'форма записи: подсказка о часах работы');
+
+echo "  -- профиль питомцев --" . PHP_EOL;
+has($pets, 'Записей', 'профиль: показано число записей питомца');
+has($pets, 'Есть заявки', 'профиль: удаление питомца с заявками заблокировано');
+has($pets, 'data-reveal', 'профиль: карточки питомцев появляются с анимацией');
 
 /* ================= Администратор ================= */
 section('Администратор');
@@ -228,37 +275,139 @@ $jar2 = sys_get_temp_dir() . '/smoke_user2.cookie';
 @unlink($jar2);
 request('/backend/actions/login.php', $jar2, ['login' => 'petrov01', 'password' => 'vetpass1']);
 
-// Попытка 1: вид животного и услуга не из справочника, время вне работы клиники.
+$barshik = petId('Барсик');
+
+// Попытка 1: услуга не из справочника, дата в прошлом, время вне работы клиники.
 request('/backend/actions/application_create.php', $jar2, [
-    'pet_name'       => 'Тестовик',
-    'animal_type'    => 'дракон',
+    'pet_id'         => (string) $barshik,
     'service'        => 'Массаж',
-    'appt_date'      => '20.12.2026',
+    'appt_date'      => '2020-01-01',
     'appt_time'      => '07:30',
     'payment_method' => 'Наличными',
 ], false);
 
 $bad = page('/frontend/application_create.php', 'после отказа валидации', $jar2);
-has($bad, 'Недопустимое значение поля «Вид животного»', 'ошибка: вид животного не из справочника');
 has($bad, 'Недопустимое значение поля «Услуга»', 'ошибка: услуга не из справочника');
+has($bad, 'дата не может быть в прошлом', 'ошибка: дата приёма в прошлом');
 has($bad, 'Клиника работает с 09:00 до 20:00', 'ошибка: время вне часов работы');
 has($bad, 'field--invalid', 'невалидные поля подсвечены');
-has($bad, 'value="Тестовик"', 'кличка питомца сохранена в форме');
+has($bad, 'value="' . $barshik . '"', 'выбранный питомец сохранён в форме');
 
-// Попытка 2: всё корректно.
+// Попытка 2: питомец из чужого профиля подсунут вручную.
 request('/backend/actions/application_create.php', $jar2, [
-    'pet_name'       => 'Тестовик',
-    'animal_type'    => 'птица',
+    'pet_id'         => '999999',
     'service'        => 'УЗИ',
-    'appt_date'      => '20.12.2026',
+    'appt_date'      => '2026-12-20',
+    'appt_time'      => '18:45',
+    'payment_method' => 'Картой в клинике',
+], false);
+
+$foreign = page('/frontend/application_create.php', 'чужой питомец', $jar2);
+has($foreign, 'Выберите питомца из своего профиля', 'ошибка: питомец чужого профиля отклонён');
+
+// Попытка 3: всё корректно.
+request('/backend/actions/application_create.php', $jar2, [
+    'pet_id'         => (string) $barshik,
+    'service'        => 'УЗИ',
+    'appt_date'      => '2026-12-20',
     'appt_time'      => '18:45',
     'payment_method' => 'Картой в клинике',
 ], false);
 
 $ok = page('/frontend/applications.php', 'после успешной отправки', $jar2);
 has($ok, 'Заявка отправлена администратору', 'всплывающее сообщение об успешной отправке');
-has($ok, 'Тестовик', 'заявка появилась в личном кабинете');
+has($ok, 'Барсик', 'заявка появилась в личном кабинете');
 has($ok, 'Новая', 'новой заявке присвоен статус «Новая»');
+
+/* ================= Отмена заявки ================= */
+section('Отмена заявки владельцем');
+
+$newId = lastApplicationId();
+
+has($ok, 'Отменить заявку', 'у свежей заявки есть кнопка отмены');
+
+// Успешная отмена заявки в статусе «Новая».
+request('/backend/actions/application_cancel.php', $jar2, ['application_id' => (string) $newId], false);
+
+$cancelled = page('/frontend/applications.php', 'после отмены', $jar2);
+has($cancelled, 'Заявка №' . $newId . ' отменена', 'отмена: сообщение об успехе');
+has($cancelled, 'badge--cancelled', 'отмена: статус стал «Отменена»');
+
+// Повторная отмена отклоняется — заявка уже не «Новая».
+request('/backend/actions/application_cancel.php', $jar2, ['application_id' => (string) $newId], false);
+
+$again = page('/frontend/applications.php', 'повторная отмена', $jar2);
+has($again, 'Отменить можно только заявку со статусом «Новая»', 'отмена: повторно отменить нельзя');
+
+// Заявка №3 — «Подтверждена»: отменять её уже нельзя.
+request('/backend/actions/application_cancel.php', $jar2, ['application_id' => '3'], false);
+
+$confirmed = page('/frontend/applications.php', 'отмена подтверждённой', $jar2);
+has($confirmed, 'Отменить можно только заявку со статусом «Новая»', 'отмена: подтверждённую заявку нельзя');
+
+// Несуществующая заявка.
+request('/backend/actions/application_cancel.php', $jar2, ['application_id' => '999999'], false);
+
+$missing = page('/frontend/applications.php', 'отмена несуществующей', $jar2);
+has($missing, 'Заявка не найдена', 'отмена: несуществующая заявка отклонена');
+
+/* ================= Профиль питомцев ================= */
+section('Профиль питомцев');
+
+$jar4 = sys_get_temp_dir() . '/smoke_user4.cookie';
+@unlink($jar4);
+request('/backend/actions/login.php', $jar4, ['login' => 'petrov01', 'password' => 'vetpass1']);
+
+// Питомца, на которого есть заявки, удалить нельзя.
+request('/backend/actions/pet_delete.php', $jar4, ['pet_id' => (string) $barshik], false);
+
+$busy = page('/frontend/pets.php', 'удаление питомца с заявками', $jar4);
+has($busy, 'Нельзя удалить питомца', 'профиль: питомца с заявками удалить нельзя');
+
+// Новый питомец без заявок.
+request('/backend/actions/pet_create.php', $jar4, [
+    'name'        => 'Тестовый',
+    'animal_type' => 'птица',
+    'breed'       => 'Волнистый попугай',
+    'birth_date'  => '2024-05-10',
+    'note'        => 'Опытные владельцы',
+], false);
+
+$added = page('/frontend/pets.php', 'после добавления питомца', $jar4);
+has($added, 'Питомец «Тестовый» добавлен', 'профиль: сообщение об успешном добавлении');
+has($added, 'Тестовый', 'профиль: новый питомец в списке');
+has($added, '10.05.2024', 'профиль: дата рождения выведена в привычном виде');
+
+// Та же кличка второй раз не добавляется.
+request('/backend/actions/pet_create.php', $jar4, [
+    'name'        => 'Тестовый',
+    'animal_type' => 'птица',
+    'breed'       => '',
+    'birth_date'  => '',
+    'note'        => '',
+], false);
+
+$duplicate = page('/frontend/pets.php', 'повторное добавление', $jar4);
+has($duplicate, 'уже есть в вашем профиле', 'профиль: дубль клички отклонён');
+
+// Дата рождения из будущего — ошибка.
+request('/backend/actions/pet_create.php', $jar4, [
+    'name'        => 'Будущий',
+    'animal_type' => 'кошка',
+    'breed'       => '',
+    'birth_date'  => '2099-01-01',
+    'note'        => '',
+], false);
+
+$future = page('/frontend/pets.php', 'дата рождения из будущего', $jar4);
+has($future, 'не может быть в будущем', 'профиль: дата рождения из будущего отклонена');
+
+// Питомец без заявок удаляется.
+request('/backend/actions/pet_delete.php', $jar4, ['pet_id' => (string) petId('Тестовый')], false);
+
+$removed = page('/frontend/pets.php', 'после удаления питомца', $jar4);
+has($removed, 'Питомец удалён из профиля', 'профиль: питомец без заявок удаляется');
+lacks($removed, 'Тестовый', 'профиль: удалённый питомец исчез из списка');
 
 section('Смена статуса администратором');
 
@@ -344,6 +493,28 @@ $inbox = page('/frontend/applications.php', 'кабинет нового пол�
 has($inbox, 'Заявок пока нет', 'новый пользователь вошёл в систему');
 has($inbox, 'novikov02', 'логин нового пользователя в шапке');
 lacks($inbox, 'Барсик', 'новому пользователю не показывают чужие записи');
+
+// У нового пользователя нет питомцев — форма записи предлагает его добавить.
+$noPets = page('/frontend/application_create.php', 'запись без питомцев', $guest);
+has($noPets, 'добавьте питомца в профиль', 'без питомцев форма записи объясняет, что делать');
+lacks($noPets, 'name="service"', 'без питомцев форма записи не показывается');
+
+// Питомцы нового пользователя не смешиваются с чужими.
+$emptyPets = page('/frontend/pets.php', 'пустой профиль питомцев', $guest);
+has($emptyPets, 'Питомцев пока нет', 'пустой профиль оформлен пустым состоянием');
+lacks($emptyPets, 'card--pet', 'в профиле нет чужих карточек питомцев');
+
+// Заявка на чужого питомца отклоняется, даже если он известен по id.
+request('/backend/actions/application_create.php', $guest, [
+    'pet_id'         => (string) $barshik,
+    'service'        => 'УЗИ',
+    'appt_date'      => '2026-12-20',
+    'appt_time'      => '18:45',
+    'payment_method' => 'Наличными',
+], false);
+
+$stolen = page('/frontend/application_create.php', 'запись на чужого питомца', $guest);
+has($stolen, 'Выберите питомца из своего профиля', 'запись на чужого питомца отклонена');
 
 /* ================= Отзывы ================= */
 section('Отзывы');

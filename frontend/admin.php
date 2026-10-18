@@ -18,45 +18,33 @@ Auth::requireAdmin();
 
 $__pageTitle = 'Панель администратора';
 
-/* ---------- Параметры фильтрации из GET ------------------------------
+/* ---------- Фильтры из GET ----------
    Каждый параметр проверяется по справочнику: произвольное значение
-   из адресной строки не должно попасть в SQL как есть.                 */
+   из адресной строки не должно попасть в SQL как есть.
+   Разбор сосредоточен в ApplicationFilter — тем же кодом пользуется
+   обработчик смены статуса, чтобы пересчитать счётчики на месте. */
 
-$__statuses = [STATUS_NEW, STATUS_CONFIRMED, STATUS_DONE, STATUS_CANCELLED];
+$__filter = ApplicationFilter::fromArray($_GET);
 
-$__status = isset($_GET['status']) ? (string) $_GET['status'] : '';
+$__status = $__filter->status;
+$__service = $__filter->service;
+$__query = $__filter->query;
 
-if (!in_array($__status, $__statuses, true)) {
-    $__status = '';
-}
-
-$__service = isset($_GET['service']) ? (string) $_GET['service'] : '';
-
-if (!in_array($__service, SERVICES, true)) {
-    $__service = '';
-}
-
-/** Поисковая строка в том виде, в каком её видит пользователь. */
-$__query = mb_substr(trim(isset($_GET['q']) ? (string) $_GET['q'] : ''), 0, 60);
-
-$__requestedPage = max(1, (int) (isset($_GET['page']) ? $_GET['page'] : 1));
+$__statuses = STATUSES;
 
 /* Поиск идёт по кличке питомца и ФИО владельца.
    Служебные символы LIKE экранируются внутри Application::search(). */
-$__result = Application::search($__status, $__service, $__query, $__requestedPage);
+$__result = Application::search($__status, $__service, $__query, $__filter->page);
 $__rows   = $__result['rows'];
 $__pages  = $__result['pages'];
 $__page   = $__result['page'];
 $__total  = $__result['total'];
 $__counts = Application::countByStatus();
 
-/** Текущие фильтры без номера страницы — для ссылок «чипов» и сброса. */
-$__filters = ['status' => $__status, 'service' => $__service, 'q' => $__query];
-
 /** Адрес текущей выборки — возвращается сюда после смены статуса. */
-$__back = urlQuery('frontend/admin.php', $__filters + ['page' => $__page]);
+$__back = urlQuery('frontend/admin.php', $__filter->paramsWithPage($__page));
 
-$__filtered = $__status !== '' || $__service !== '' || $__query !== '';
+$__filtered = $__filter->isActive();
 
 /** Первая и последняя показанные записи: «показано 1–5 из 12». */
 $__from = $__total === 0 ? 0 : ($__page - 1) * ADMIN_PAGE_SIZE + 1;
@@ -78,10 +66,11 @@ require __DIR__ . '/partials/header.php';
         </div>
 
         <!-- ============ Сводка ============ -->
-        <div class="stats">
+        <div class="stats" data-stats>
             <?php foreach ($__counts as $__s => $__count): ?>
                 <?php $__isActive = $__status === $__s; ?>
                 <a class="stat<?= $__isActive ? ' stat--active' : '' ?>"
+                   data-stat="<?= e($__s) ?>"
                    href="<?= urlQuery('frontend/admin.php', ['status' => $__isActive ? '' : $__s, 'service' => $__service, 'q' => $__query]) ?>"
                    aria-label="<?= e($__s) ?>: <?= (int) $__count ?> заявок">
                     <p class="stat__value"><?= (int) $__count ?></p>
@@ -161,7 +150,7 @@ require __DIR__ . '/partials/header.php';
             <i class="bi bi-info-circle"></i>
             <span>
                 Показано <strong><?= $__from ?>–<?= $__to ?></strong>
-                из <strong><?= $__total ?></strong>&nbsp;<?= e(pluralForms($__total, 'заявка', 'заявки', 'заявок')) ?><?php
+                из <strong data-result-total><?= $__total ?></strong>&nbsp;<?= e(pluralForms($__total, 'заявка', 'заявки', 'заявок')) ?><?php
                 if ($__filtered) {
                     echo ' по выбранным фильтрам';
                 } ?>
@@ -181,7 +170,9 @@ require __DIR__ . '/partials/header.php';
                 <?php endif; ?>
             </div>
         <?php else: ?>
-            <div class="table-wrap">
+            <?php /* Фильтр по статусу нужен скрипту: после смены статуса строка
+                     может перестать соответствовать выборке и должна уехать. */ ?>
+            <div class="table-wrap" data-status-filter="<?= e($__status) ?>">
                 <table class="table table--responsive">
                     <thead>
                         <tr>
@@ -198,7 +189,7 @@ require __DIR__ . '/partials/header.php';
                     <tbody>
                     <?php foreach ($__rows as $__app): ?>
                         <?php $__next = Application::availableTransitions($__app['status']); ?>
-                        <tr>
+                        <tr data-application-row="<?= (int) $__app['id'] ?>">
                             <td data-label="№"><?= (int) $__app['id'] ?></td>
                             <td data-label="Владелец">
                                 <span class="table__name"><?= e($__app['full_name']) ?></span>
@@ -211,14 +202,15 @@ require __DIR__ . '/partials/header.php';
                             </td>
                             <td data-label="Услуга"><?= e(ucfirst($__app['service'])) ?></td>
                             <td data-label="Дата и время">
-                                <span class="table__name"><?= e($__app['appt_date']) ?></span>
+                                <span class="table__name"><?= e(formatDate($__app['appt_date'])) ?></span>
                                 <span class="table__sub">
                                     <i class="bi bi-clock"></i> <?= e($__app['appt_time']) ?>
                                 </span>
                             </td>
                             <td data-label="Оплата"><?= e($__app['payment_method']) ?></td>
                             <td data-label="Статус">
-                                <span class="badge <?= e(statusBadgeClass($__app['status'])) ?>">
+                                <span class="badge <?= e(statusBadgeClass($__app['status'])) ?>"
+                                      data-status-badge>
                                     <?= e($__app['status']) ?>
                                 </span>
                                 <?php if ((int) $__app['has_review'] > 0): ?>
@@ -227,12 +219,12 @@ require __DIR__ . '/partials/header.php';
                                     </span>
                                 <?php endif; ?>
                             </td>
-                            <td data-label="Действие">
+                            <td data-label="Действие" data-status-actions>
                                 <?php if ($__next === []): ?>
                                     <span class="muted">—</span>
                                 <?php else: ?>
                                     <form method="post" action="<?= url('backend/actions/admin_status.php') ?>"
-                                          class="inline-form">
+                                          class="inline-form" data-status-form>
                                         <input type="hidden" name="application_id" value="<?= (int) $__app['id'] ?>">
                                         <input type="hidden" name="return" value="<?= e($__back) ?>">
                                         <select class="field__input field__input--sm" name="status"
@@ -259,7 +251,7 @@ require __DIR__ . '/partials/header.php';
             <nav class="pagination" aria-label="Страницы списка заявок">
                 <?php if ($__page > 1): ?>
                     <a class="pagination__btn"
-                       href="<?= urlQuery('frontend/admin.php', $__filters + ['page' => $__page - 1]) ?>"
+                       href="<?= urlQuery('frontend/admin.php', $__filter->paramsWithPage($__page - 1)) ?>"
                        aria-label="Предыдущая страница"><i class="bi bi-chevron-left"></i></a>
                 <?php else: ?>
                     <span class="pagination__btn pagination__btn--off"><i class="bi bi-chevron-left"></i></span>
@@ -270,13 +262,13 @@ require __DIR__ . '/partials/header.php';
                         <span class="pagination__btn pagination__btn--current" aria-current="page"><?= $__p ?></span>
                     <?php else: ?>
                         <a class="pagination__btn"
-                           href="<?= urlQuery('frontend/admin.php', $__filters + ['page' => $__p]) ?>"><?= $__p ?></a>
+                           href="<?= urlQuery('frontend/admin.php', $__filter->paramsWithPage($__p)) ?>"><?= $__p ?></a>
                     <?php endif; ?>
                 <?php endfor; ?>
 
                 <?php if ($__page < $__pages): ?>
                     <a class="pagination__btn"
-                       href="<?= urlQuery('frontend/admin.php', $__filters + ['page' => $__page + 1]) ?>"
+                       href="<?= urlQuery('frontend/admin.php', $__filter->paramsWithPage($__page + 1)) ?>"
                        aria-label="Следующая страница"><i class="bi bi-chevron-right"></i></a>
                 <?php else: ?>
                     <span class="pagination__btn pagination__btn--off"><i class="bi bi-chevron-right"></i></span>
