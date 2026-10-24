@@ -1,13 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Модель пользователя портала.
- * Все запросы — подготовленные (PDO::prepare + execute).
- */
 final class User
 {
-    /** Регистрация нового пользователя. Возвращает id. */
+
     public static function create(string $login, string $password, string $fullName, string $phone, string $email): int
     {
         return Database::insert(
@@ -24,7 +20,6 @@ final class User
         );
     }
 
-    /** Поиск по логину. */
     public static function findByLogin(string $login): ?array
     {
         return Database::fetchOne(
@@ -35,7 +30,6 @@ final class User
         );
     }
 
-    /** Поиск по идентификатору. */
     public static function findById(int $id): ?array
     {
         return Database::fetchOne(
@@ -46,7 +40,6 @@ final class User
         );
     }
 
-    /** Занят ли логин. */
     public static function loginExists(string $login): bool
     {
         $row = Database::fetchOne(
@@ -57,7 +50,6 @@ final class User
         return $row !== null;
     }
 
-    /** Занят ли адрес электронной почты. */
     public static function emailExists(string $email): bool
     {
         $row = Database::fetchOne(
@@ -68,7 +60,6 @@ final class User
         return $row !== null;
     }
 
-    /** Количество пользователей в системе. */
     public static function count(): int
     {
         $row = Database::fetchOne('SELECT COUNT(*) AS n FROM users');

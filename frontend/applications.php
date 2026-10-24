@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/applications.php
- * Личный кабинет владельца питомца: список своих заявок, отмена и отзывы.
- */
-
 require_once __DIR__ . '/../backend/bootstrap.php';
 
 Auth::requireLogin();
@@ -18,10 +13,8 @@ $__pageTitle = 'Мои заявки';
 $__errors    = takeErrors();
 $__old       = takeOld();
 
-/** Заявки текущего пользователя с питомцами и отзывами — не чужие. */
 $__applications = Application::forUser(Auth::id());
 
-/** Порядковый номер карточки: задаёт задержку появления при анимации. */
 $__index = 0;
 
 require __DIR__ . '/partials/header.php';
@@ -38,7 +31,8 @@ require __DIR__ . '/partials/header.php';
             </a>
         </div>
 
-        <?php /* Ошибки отправки форм (например, отказ в отзыве) — вне формы. */ ?>
+        <?php
+ ?>
         <?php foreach ($__errors as $__message): ?>
             <?php
             $__alertType = 'danger';

@@ -1,13 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/partials/header.php
- * Шапка сайта: навигация, flash-сообщения, подключение стилей.
- *
- * Ожидает, что bootstrap.php уже подключён.
- */
-
 $__flashes = flashTake();
 $__user    = currentUser();
 $__here    = basename($_SERVER['SCRIPT_NAME'] ?? '');
@@ -19,8 +12,7 @@ $__here    = basename($_SERVER['SCRIPT_NAME'] ?? '');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(APP_NAME) ?> — <?= e($__pageTitle ?? APP_TAGLINE) ?></title>
     <link rel="icon" href="<?= asset('img/logo.svg') ?>">
-    <!-- Класс .js позволяет CSS прятать блоки для анимации появления:
-         без работающего скрипта контент остаётся видимым. -->
+
     <script>document.documentElement.className += ' js';</script>
     <link rel="stylesheet" href="<?= asset('vendor/bootstrap/css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= asset('vendor/bootstrap-icons/bootstrap-icons.min.css') ?>">
@@ -82,11 +74,6 @@ $__here    = basename($_SERVER['SCRIPT_NAME'] ?? '');
     </div>
 </header>
 
-<!--
-    Стек уведомлений. Сюда app.js переносит все блоки [data-toast]
-    (flash-сообщения, ошибки вне формы и ответы на fetch-запросы),
-    чтобы выезжающие уведомления выглядели одинаково везде.
--->
 <div class="notifications" data-toasts>
     <?php foreach ($__flashes as $__flash): ?>
         <?php

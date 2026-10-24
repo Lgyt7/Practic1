@@ -1,17 +1,10 @@
 <?php
 declare(strict_types=1);
-
-/**
- * frontend/partials/footer.php
- * Подвал сайта и подключение скриптов.
- */
-
-declare(strict_types=1);
 ?>
 <footer class="site-footer">
     <div class="container footer-inner">
         <p class="footer__copy">
-            © <?= date('Y') ?> <?= e(APP_NAME) ?>. Учебная практика, вариант 4.
+            © <?= date('Y') ?> <?= e(APP_NAME) ?>. Учебная практика · 09.02.07 · Вариант 4.
         </p>
         <p class="footer__contacts">
             <i class="bi bi-telephone-fill"></i> <?= e(CLINIC_PHONE) ?>

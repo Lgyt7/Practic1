@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/** Проверка кодировки файлов проекта: всё должно быть валидным UTF-8. */
-
 $root = dirname(__DIR__);
 
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));

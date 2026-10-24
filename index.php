@@ -1,14 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * index.php
- * Главная страница портала — точка входа приложения.
- * Содержит слайдер из 4 изображений, преимущества и последние отзывы.
- *
- * Логика — в backend/, здесь только сборка страницы.
- */
-
 require_once __DIR__ . '/backend/bootstrap.php';
 
 $__pageTitle = 'Ветеринарная клиника';
@@ -26,7 +18,6 @@ require __DIR__ . '/frontend/partials/header.php';
 
 <main>
 
-    <!-- ================= Слайдер ================= -->
     <section class="slider" data-slider aria-roledescription="карусель" aria-label="Главные преимущества">
         <div class="slider__track" data-slider-track>
             <?php foreach ($__slides as $__i => $__slide): ?>
@@ -62,7 +53,6 @@ require __DIR__ . '/frontend/partials/header.php';
         </div>
     </section>
 
-    <!-- ================= Действие ================= -->
     <section class="cta">
         <div class="container cta__inner">
             <?php if ($__user === null): ?>
@@ -99,7 +89,6 @@ require __DIR__ . '/frontend/partials/header.php';
         </div>
     </section>
 
-    <!-- ================= Преимущества ================= -->
     <section class="features">
         <div class="container">
             <h2 class="section-title">Почему выбирают нас</h2>
@@ -123,7 +112,6 @@ require __DIR__ . '/frontend/partials/header.php';
         </div>
     </section>
 
-    <!-- ================= Отзывы ================= -->
     <?php if ($__reviews !== []): ?>
         <section class="reviews">
             <div class="container">

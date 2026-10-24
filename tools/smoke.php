@@ -1,26 +1,8 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Смоук-тест страниц через встроенный веб-сервер PHP.
- *
- * ВНИМАНИЕ: тест пересоздаёт базу (dump.sql + seed.php) и меняет данные
- * в ней. Запускать только на dev-копии.
- *
- * Запуск (в двух окнах):
- *   php -S 127.0.0.1:8088 -t .
- *   php tools/smoke.php
- *
- * Возвращает 0, если все проверки пройдены.
- */
-
 const BASE = 'http://127.0.0.1:8088';
 
-/**
- * Подключение к базе для служебных запросов теста.
- * Тот же PDO, что и у приложения: идентификаторы берутся из базы,
- * а не угадываются по порядку вставки.
- */
 function db(): PDO
 {
     static $pdo = null;
@@ -39,7 +21,6 @@ function db(): PDO
     return $pdo;
 }
 
-/** Идентификатор питомца по кличке. */
 function petId(string $name, string $login = 'petrov01'): int
 {
     $stmt = db()->prepare(
@@ -51,19 +32,11 @@ function petId(string $name, string $login = 'petrov01'): int
     return (int) ($stmt->fetchColumn() ?: 0);
 }
 
-/** Идентификатор последней созданной заявки. */
 function lastApplicationId(): int
 {
     return (int) db()->query('SELECT MAX(id) FROM applications')->fetchColumn();
 }
 
-/**
- * Сбросить базу к состоянию «структура + демо-данные».
- *
- * Тест проверяет сценарии, которые меняют данные (смена статуса,
- * регистрация, отзыв), поэтому перед каждым прогоном база
- * пересоздаётся заново — иначе проверки зависят от порядка запуска.
- */
 function resetDatabase(string $root): void
 {
     $dump = file_get_contents($root . '/backend/database/dump.sql');
@@ -81,11 +54,6 @@ function resetDatabase(string $root): void
 
 $failures = 0;
 
-/**
- * $follow — false для POST-обработчиков: за ними нужно зайти отдельно,
- * иначе one-shot сообщения (flash, ошибки валидации) будут съедены
- * первым же переходом по Location.
- */
 function request(string $path, ?string $jar = null, ?array $post = null, bool $follow = true): array
 {
     $ch = curl_init(BASE . $path);
@@ -158,12 +126,10 @@ function lacks(string $html, string $needle, string $label): void
     }
 }
 
-/* ================= Подготовка ================= */
 $root = dirname(__DIR__);
 
 resetDatabase($root);
 
-// Без работающего сервера проверки бессмысленны — проверяем заранее.
 $probe = request('/index.php');
 
 if ($probe[0] !== 200) {
@@ -171,7 +137,6 @@ if ($probe[0] !== 200) {
         . PHP_EOL . 'Запустите его в другом окне: php -S 127.0.0.1:8088 -t .' . PHP_EOL);
 }
 
-/* ================= Гость ================= */
 section('Гость');
 $index = page('/index.php', 'index.php — слайдер');
 $login = page('/frontend/login.php', 'login.php');
@@ -190,7 +155,6 @@ has($index, 'Отзывы владельцев', 'главная: блок от�
 has($login, 'bi-person field__control-icon', 'вход: иконка поля логина');
 has($reg, 'bi-lock field__control-icon', 'регистрация: иконка поля пароля');
 
-/* ================= Владелец ================= */
 section('Владелец питомца');
 $jar = sys_get_temp_dir() . '/smoke_user.cookie';
 @unlink($jar);
@@ -223,7 +187,6 @@ has($pets, 'Записей', 'профиль: показано число зап
 has($pets, 'Есть заявки', 'профиль: удаление питомца с заявками заблокировано');
 has($pets, 'data-reveal', 'профиль: карточки питомцев появляются с анимацией');
 
-/* ================= Администратор ================= */
 section('Администратор');
 $ajar = sys_get_temp_dir() . '/smoke_admin.cookie';
 @unlink($ajar);
@@ -249,18 +212,15 @@ has($adm, 'name="return"', 'админка: возврат с фильтрами
 has($adm, 'Показано', 'админка: строка «показано N–M из K»');
 has($adm, 'pagination__btn', 'админка: пагинация');
 
-// Персик — заявка со статусом «Новая», Барсик — «Приём завершён».
 has($st, 'Персик', 'фильтр по статусу: показана заявка «Новая»');
 lacks($st, 'Барсик', 'фильтр по статусу: «Приём завершён» отфильтрован');
 
-// Шарик и Ёжик записаны на «УЗИ», Барсик — на «вакцинацию».
 has($sv, 'Шарик', 'фильтр по услуге: остались заявки на «УЗИ»');
 lacks($sv, 'Барсик', 'фильтр по услуге: «вакцинация» отфильтрована');
 
 has($q, 'Барсик', 'поиск по кличке найден');
 lacks($q, 'Шарик', 'поиск по кличке отсекает лишние записи');
-// По ФИО владельца находится всё его (8 записей, 2 страницы) —
-// Персик попадает на первую страницу, Барсик — на вторую.
+
 has($qf, 'Персик', 'поиск по ФИО владельца найден');
 has($qf, 'Показано', 'поиск по ФИО: верная пагинация результата');
 has($like, 'Заявок не найдено', '«%» в поиске не превращается в шаблон LIKE');
@@ -268,7 +228,6 @@ has($none, 'Заявок не найдено', 'пустой результат 
 has($bad, 'Панель администратора', 'мусорные параметры не ломают страницу');
 has($p2, 'pagination__btn--current', 'пагинация: вторая страница открыта');
 
-/* ================= Сценарии с формами ================= */
 section('Создание заявки: валидация');
 
 $jar2 = sys_get_temp_dir() . '/smoke_user2.cookie';
@@ -277,7 +236,6 @@ request('/backend/actions/login.php', $jar2, ['login' => 'petrov01', 'password' 
 
 $barshik = petId('Барсик');
 
-// Попытка 1: услуга не из справочника, дата в прошлом, время вне работы клиники.
 request('/backend/actions/application_create.php', $jar2, [
     'pet_id'         => (string) $barshik,
     'service'        => 'Массаж',
@@ -293,7 +251,6 @@ has($bad, 'Клиника работает с 09:00 до 20:00', 'ошибка: 
 has($bad, 'field--invalid', 'невалидные поля подсвечены');
 has($bad, 'value="' . $barshik . '"', 'выбранный питомец сохранён в форме');
 
-// Попытка 2: питомец из чужого профиля подсунут вручную.
 request('/backend/actions/application_create.php', $jar2, [
     'pet_id'         => '999999',
     'service'        => 'УЗИ',
@@ -305,7 +262,6 @@ request('/backend/actions/application_create.php', $jar2, [
 $foreign = page('/frontend/application_create.php', 'чужой питомец', $jar2);
 has($foreign, 'Выберите питомца из своего профиля', 'ошибка: питомец чужого профиля отклонён');
 
-// Попытка 3: всё корректно.
 request('/backend/actions/application_create.php', $jar2, [
     'pet_id'         => (string) $barshik,
     'service'        => 'УЗИ',
@@ -319,52 +275,44 @@ has($ok, 'Заявка отправлена администратору', 'вс
 has($ok, 'Барсик', 'заявка появилась в личном кабинете');
 has($ok, 'Новая', 'новой заявке присвоен статус «Новая»');
 
-/* ================= Отмена заявки ================= */
 section('Отмена заявки владельцем');
 
 $newId = lastApplicationId();
 
 has($ok, 'Отменить заявку', 'у свежей заявки есть кнопка отмены');
 
-// Успешная отмена заявки в статусе «Новая».
 request('/backend/actions/application_cancel.php', $jar2, ['application_id' => (string) $newId], false);
 
 $cancelled = page('/frontend/applications.php', 'после отмены', $jar2);
 has($cancelled, 'Заявка №' . $newId . ' отменена', 'отмена: сообщение об успехе');
 has($cancelled, 'badge--cancelled', 'отмена: статус стал «Отменена»');
 
-// Повторная отмена отклоняется — заявка уже не «Новая».
 request('/backend/actions/application_cancel.php', $jar2, ['application_id' => (string) $newId], false);
 
 $again = page('/frontend/applications.php', 'повторная отмена', $jar2);
 has($again, 'Отменить можно только заявку со статусом «Новая»', 'отмена: повторно отменить нельзя');
 
-// Заявка №3 — «Подтверждена»: отменять её уже нельзя.
 request('/backend/actions/application_cancel.php', $jar2, ['application_id' => '3'], false);
 
 $confirmed = page('/frontend/applications.php', 'отмена подтверждённой', $jar2);
 has($confirmed, 'Отменить можно только заявку со статусом «Новая»', 'отмена: подтверждённую заявку нельзя');
 
-// Несуществующая заявка.
 request('/backend/actions/application_cancel.php', $jar2, ['application_id' => '999999'], false);
 
 $missing = page('/frontend/applications.php', 'отмена несуществующей', $jar2);
 has($missing, 'Заявка не найдена', 'отмена: несуществующая заявка отклонена');
 
-/* ================= Профиль питомцев ================= */
 section('Профиль питомцев');
 
 $jar4 = sys_get_temp_dir() . '/smoke_user4.cookie';
 @unlink($jar4);
 request('/backend/actions/login.php', $jar4, ['login' => 'petrov01', 'password' => 'vetpass1']);
 
-// Питомца, на которого есть заявки, удалить нельзя.
 request('/backend/actions/pet_delete.php', $jar4, ['pet_id' => (string) $barshik], false);
 
 $busy = page('/frontend/pets.php', 'удаление питомца с заявками', $jar4);
 has($busy, 'Нельзя удалить питомца', 'профиль: питомца с заявками удалить нельзя');
 
-// Новый питомец без заявок.
 request('/backend/actions/pet_create.php', $jar4, [
     'name'        => 'Тестовый',
     'animal_type' => 'птица',
@@ -378,7 +326,6 @@ has($added, 'Питомец «Тестовый» добавлен', 'профи�
 has($added, 'Тестовый', 'профиль: новый питомец в списке');
 has($added, '10.05.2024', 'профиль: дата рождения выведена в привычном виде');
 
-// Та же кличка второй раз не добавляется.
 request('/backend/actions/pet_create.php', $jar4, [
     'name'        => 'Тестовый',
     'animal_type' => 'птица',
@@ -390,7 +337,6 @@ request('/backend/actions/pet_create.php', $jar4, [
 $duplicate = page('/frontend/pets.php', 'повторное добавление', $jar4);
 has($duplicate, 'уже есть в вашем профиле', 'профиль: дубль клички отклонён');
 
-// Дата рождения из будущего — ошибка.
 request('/backend/actions/pet_create.php', $jar4, [
     'name'        => 'Будущий',
     'animal_type' => 'кошка',
@@ -402,7 +348,6 @@ request('/backend/actions/pet_create.php', $jar4, [
 $future = page('/frontend/pets.php', 'дата рождения из будущего', $jar4);
 has($future, 'не может быть в будущем', 'профиль: дата рождения из будущего отклонена');
 
-// Питомец без заявок удаляется.
 request('/backend/actions/pet_delete.php', $jar4, ['pet_id' => (string) petId('Тестовый')], false);
 
 $removed = page('/frontend/pets.php', 'после удаления питомца', $jar4);
@@ -415,8 +360,6 @@ $ajar2 = sys_get_temp_dir() . '/smoke_admin2.cookie';
 @unlink($ajar2);
 request('/backend/actions/login.php', $ajar2, ['login' => 'Admin', 'password' => 'VetLapa1']);
 
-// Заявка №4 — Персик, демо-статус «Новая».
-// «Новая» → «Приём завершён» — переход через ступеньку, сервер обязан отклонить.
 request('/backend/actions/admin_status.php', $ajar2, [
     'application_id' => '4',
     'status'         => 'Приём завершён',
@@ -427,7 +370,6 @@ $rejected = page('/frontend/admin.php', 'после недопустимого �
 has($rejected, 'Недопустимый переход: «Новая» → «Приём завершён»', 'переход через ступеньку отклонён на сервере');
 has($rejected, 'badge--new', 'статус заявки не изменился');
 
-// Допустимый переход «Новая» → «Подтверждена» с фильтром в адресной строке.
 request('/backend/actions/admin_status.php', $ajar2, [
     'application_id' => '4',
     'status'         => 'Подтверждена',
@@ -439,13 +381,11 @@ has($accepted, 'Статус заявки №4 обновлён', 'всплыв�
 has($accepted, 'Персик', 'фильтр сохранён после смены статуса');
 has($accepted, 'badge--confirmed', 'статус в таблице обновился');
 
-/* ================= Регистрация ================= */
 section('Регистрация');
 
 $guest = sys_get_temp_dir() . '/smoke_guest.cookie';
 @unlink($guest);
 
-// Некорректные поля: логин с пробелом и кириллицей, ФИО с цифрами, телефон не по формату.
 request('/backend/actions/register.php', $guest, [
     'login'     => 'иван',
     'full_name' => 'Иванов1 Иван',
@@ -462,7 +402,6 @@ has($regErr, 'Электронная почта указана в неверно
 has($regErr, 'Пароль должен быть не короче 6 символов', 'ошибка: короткий пароль');
 has($regErr, 'value="Иванов1 Иван"', 'введённые значения сохранены в форме');
 
-// Логин уже занят.
 request('/backend/actions/register.php', $guest, [
     'login'     => 'petrov01',
     'full_name' => 'Новый Иванов Иван',
@@ -474,7 +413,6 @@ request('/backend/actions/register.php', $guest, [
 $dup = page('/frontend/register.php', 'занятый логин', $guest);
 has($dup, 'уже зарегистрирован', 'ошибка: логин не уникален');
 
-// Корректная регистрация.
 request('/backend/actions/register.php', $guest, [
     'login'     => 'novikov02',
     'full_name' => 'Новиков Пётр Иванович',
@@ -487,24 +425,20 @@ $fresh = page('/frontend/login.php', 'после успешной регистр
 has($fresh, 'Регистрация выполнена', 'регистрация успешна — предложен вход');
 has($fresh, 'name="login"', 'открыта форма входа');
 
-// Вход под только что созданным логином.
 request('/backend/actions/login.php', $guest, ['login' => 'novikov02', 'password' => 'vetpass2'], false);
 $inbox = page('/frontend/applications.php', 'кабинет нового пользователя', $guest);
 has($inbox, 'Заявок пока нет', 'новый пользователь вошёл в систему');
 has($inbox, 'novikov02', 'логин нового пользователя в шапке');
 lacks($inbox, 'Барсик', 'новому пользователю не показывают чужие записи');
 
-// У нового пользователя нет питомцев — форма записи предлагает его добавить.
 $noPets = page('/frontend/application_create.php', 'запись без питомцев', $guest);
 has($noPets, 'добавьте питомца в профиль', 'без питомцев форма записи объясняет, что делать');
 lacks($noPets, 'name="service"', 'без питомцев форма записи не показывается');
 
-// Питомцы нового пользователя не смешиваются с чужими.
 $emptyPets = page('/frontend/pets.php', 'пустой профиль питомцев', $guest);
 has($emptyPets, 'Питомцев пока нет', 'пустой профиль оформлен пустым состоянием');
 lacks($emptyPets, 'card--pet', 'в профиле нет чужих карточек питомцев');
 
-// Заявка на чужого питомца отклоняется, даже если он известен по id.
 request('/backend/actions/application_create.php', $guest, [
     'pet_id'         => (string) $barshik,
     'service'        => 'УЗИ',
@@ -516,14 +450,12 @@ request('/backend/actions/application_create.php', $guest, [
 $stolen = page('/frontend/application_create.php', 'запись на чужого питомца', $guest);
 has($stolen, 'Выберите питомца из своего профиля', 'запись на чужого питомца отклонена');
 
-/* ================= Отзывы ================= */
 section('Отзывы');
 
 $jar3 = sys_get_temp_dir() . '/smoke_user3.cookie';
 @unlink($jar3);
 request('/backend/actions/login.php', $jar3, ['login' => 'petrov01', 'password' => 'vetpass1']);
 
-// Заявка №4 — «Новая»: отзыв должен быть отклонён сервером.
 request('/backend/actions/review_create.php', $jar3, [
     'application_id' => '4',
     'review'         => 'Отзыв заранее',
@@ -534,7 +466,6 @@ $tooEarly = page('/frontend/applications.php', 'отзыв до приёма', $
 has($tooEarly, 'Отзыв можно оставить только после завершения приёма', 'отзыв отклонён при статусе «Новая»');
 has($tooEarly, 'Отзыв заранее', 'текст отзыва сохранён для повтора');
 
-// У заявки №1 отзыв уже есть — второй не принимается.
 request('/backend/actions/review_create.php', $jar3, [
     'application_id' => '1',
     'review'         => 'Второй отзыв',
@@ -544,7 +475,6 @@ request('/backend/actions/review_create.php', $jar3, [
 $twice = page('/frontend/applications.php', 'повторный отзыв', $jar3);
 has($twice, 'Отзыв по этой заявке уже оставлен', 'второй отзыв по заявке отклонён');
 
-// Заявка №2 — «Приём завершён» без отзыва: отзыв принимается.
 request('/backend/actions/review_create.php', $jar3, [
     'application_id' => '2',
     'review'         => 'Врач подробно объяснил, что происходит с питомцем.',
@@ -555,7 +485,6 @@ $after = page('/frontend/applications.php', 'после отзыва', $jar3);
 has($after, 'Спасибо за отзыв', 'всплывающее сообщение после отзыва');
 has($after, 'подробно объяснил', 'отзыв сохранён и показан владельцу');
 
-/* ================= Права доступа ================= */
 section('Права доступа');
 $ch = curl_init(BASE . '/frontend/admin.php');
 curl_setopt_array($ch, [
@@ -567,7 +496,6 @@ curl_exec($ch);
 printf("  %-42s HTTP %d%s", 'admin.php без входа → редирект', (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE), PHP_EOL);
 curl_close($ch);
 
-/* ================= Итог ================= */
 section('Итог');
 echo $failures === 0
     ? '  Все проверки пройдены.' . PHP_EOL

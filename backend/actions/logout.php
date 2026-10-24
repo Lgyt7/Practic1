@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/logout.php
- * Выход из системы.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 if (!isPost()) {

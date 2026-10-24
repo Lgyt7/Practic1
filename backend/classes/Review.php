@@ -1,13 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Модель отзыва о работе клиники.
- * Отзыв может быть оставлен один раз и только по завершённому приёму.
- */
 final class Review
 {
-    /** Создание отзыва. Возвращает id. */
+
     public static function create(int $applicationId, int $userId, string $text, ?int $rating): int
     {
         return Database::insert(
@@ -22,7 +18,6 @@ final class Review
         );
     }
 
-    /** Есть ли уже отзыв по заявке. */
     public static function exists(int $applicationId): bool
     {
         return Database::fetchOne(
@@ -31,7 +26,6 @@ final class Review
         ) !== null;
     }
 
-    /** Последние отзывы (главная страница / панель администратора). */
     public static function latest(int $limit = 5): array
     {
         return Database::fetchAll(

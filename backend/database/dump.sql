@@ -1,22 +1,10 @@
--- =====================================================================
--- Портал «Хвост и Лапы» — ветеринарная клиника, онлайн-запись на приём
--- Модуль 1. Проектирование и разработка информационных систем
--- Модуль 3. Проектирование, разработка и оптимизация веб-приложений
--- СУБД: PostgreSQL
--- Файл: backend/database/dump.sql
--- =====================================================================
-
 BEGIN;
 
--- Таблицы удаляются в обратном порядке зависимостей.
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS applications;
 DROP TABLE IF EXISTS pets;
 DROP TABLE IF EXISTS users;
 
--- ---------------------------------------------------------------------
--- users — пользователи портала (владельцы питомцев и администратор)
--- ---------------------------------------------------------------------
 CREATE TABLE users (
     id         SERIAL       PRIMARY KEY,
     login      VARCHAR(50)  NOT NULL,
@@ -31,9 +19,6 @@ CREATE TABLE users (
     CONSTRAINT users_email_uniq  UNIQUE (email),
     CONSTRAINT users_role_check  CHECK (role IN ('user', 'admin')),
 
-    -- Для регистрации действует правило «латиница + цифры, не менее 6 символов».
-    -- Логин администратора "Admin" задан условием задания и содержит 5 символов,
-    -- поэтому для него сделано явное исключение.
     CONSTRAINT users_login_check
         CHECK (login = 'Admin' OR login ~ '^[A-Za-z0-9]{6,}$')
 );
@@ -42,11 +27,6 @@ COMMENT ON TABLE  users              IS 'Пользователи портала
 COMMENT ON COLUMN users.password     IS 'Хеш пароля (password_hash), открытый пароль не хранится';
 COMMENT ON COLUMN users.role         IS 'Роль: user — владелец питомца, admin — администратор';
 
--- ---------------------------------------------------------------------
--- pets — питомцы владельца
--- Заполняется один раз в профиле, при записи на приём питомец
--- выбирается из этого списка, а не вводится заново.
--- ---------------------------------------------------------------------
 CREATE TABLE pets (
     id          SERIAL       PRIMARY KEY,
     user_id     INTEGER      NOT NULL,
@@ -61,18 +41,14 @@ CREATE TABLE pets (
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE CASCADE ON UPDATE CASCADE,
 
-    -- У одного владельца не может быть двух питомцев с одинаковой кличкой:
-    -- иначе в списке выбора они неразличимы.
     CONSTRAINT pets_user_name_uniq UNIQUE (user_id, name),
 
     CONSTRAINT pets_name_check
         CHECK (name ~ '^.{1,100}$'),
 
-    -- Вид животного выбирается из справочника
     CONSTRAINT pets_animal_type_check
         CHECK (animal_type IN ('кошка', 'собака', 'грызун', 'птица', 'другое')),
 
-    -- Дата рождения питомца не может быть в будущем.
     CONSTRAINT pets_birth_date_check
         CHECK (birth_date IS NULL OR birth_date <= CURRENT_DATE)
 );
@@ -86,9 +62,6 @@ COMMENT ON COLUMN pets.animal_type IS 'Вид животного из справ
 COMMENT ON COLUMN pets.birth_date IS 'Дата рождения питомца либо NULL';
 COMMENT ON COLUMN pets.note       IS 'Заметка владельца о питомце: аллергии, характер, пожелания';
 
--- ---------------------------------------------------------------------
--- applications — заявки на приём
--- ---------------------------------------------------------------------
 CREATE TABLE applications (
     id              SERIAL        PRIMARY KEY,
     user_id         INTEGER       NOT NULL,
@@ -104,10 +77,6 @@ CREATE TABLE applications (
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE CASCADE ON UPDATE CASCADE,
 
-    -- Питомец удаляется из профиля только вместе с заявками,
-    -- поэтому в заявке хранится ссылка, а не копия клички.
-    -- RESTRICT запрещает удалить питомца, у которого уже есть заявки:
-    -- иначе записи в панели администратора остались бы без питомца.
     CONSTRAINT applications_pet_fk
         FOREIGN KEY (pet_id) REFERENCES pets (id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -115,11 +84,9 @@ CREATE TABLE applications (
     CONSTRAINT applications_time_check
         CHECK (appt_time ~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$'),
 
-    -- Клиника работает с 09:00 до 20:00
     CONSTRAINT applications_time_range_check
         CHECK (appt_time >= '09:00' AND appt_time <= '20:00'),
 
-    -- Услуга выбирается из справочника
     CONSTRAINT applications_service_check
         CHECK (service IN ('первичный осмотр', 'вакцинация', 'стрижка когтей', 'УЗИ')),
 
@@ -142,9 +109,6 @@ COMMENT ON COLUMN applications.appt_time   IS 'Время приёма ЧЧ:ММ
 COMMENT ON COLUMN applications.status       IS 'Новая → Подтверждена → Приём завершён | Отменена. «Новую» заявку отменяет и владелец';
 COMMENT ON COLUMN applications.payment_method IS 'Наличными или Картой в клинике';
 
--- ---------------------------------------------------------------------
--- reviews — отзывы о работе клиники (только по завершённым приёмам)
--- ---------------------------------------------------------------------
 CREATE TABLE reviews (
     id             SERIAL      PRIMARY KEY,
     application_id INTEGER     NOT NULL,
@@ -161,7 +125,6 @@ CREATE TABLE reviews (
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE CASCADE ON UPDATE CASCADE,
 
-    -- Один отзыв на одну заявку
     CONSTRAINT reviews_application_uniq UNIQUE (application_id),
 
     CONSTRAINT reviews_rating_check

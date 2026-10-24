@@ -1,14 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/application_cancel.php
- * Отмена заявки самим владельцем.
- *
- * Отменить можно только заявку в статусе «Новая»: после подтверждения
- * или завершения приёма решение принимает администратор.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 Auth::requireLogin();

@@ -1,17 +1,6 @@
-/* =====================================================================
-   Портал «Хвост и Лапы» — клиентские скрипты
-   frontend/assets/js/app.js
-   Слайдер, бургер-меню, клиентская валидация, выезжающие уведомления,
-   подтверждение действий, анимация смены статуса в панели администратора.
-   Работает без интернета и сторонних библиотек.
-   ===================================================================== */
-
 (function () {
     'use strict';
 
-    /* =================================================================
-       Слайдер: автосмена каждые 3 с, кнопки вперёд/назад, точки
-       ================================================================= */
     var SLIDER_INTERVAL = 3000;
 
     document.querySelectorAll('[data-slider]').forEach(function (slider) {
@@ -78,11 +67,9 @@
             });
         });
 
-        // Пауза при наведении — удобно, когда пользователь читает текст.
         slider.addEventListener('mouseenter', stop);
         slider.addEventListener('mouseleave', start);
 
-        // Свайп на мобильных устройствах.
         var startX = null;
 
         slider.addEventListener('touchstart', function (event) {
@@ -108,9 +95,6 @@
         start();
     });
 
-    /* =================================================================
-       Бургер-меню
-       ================================================================= */
     var burger = document.querySelector('[data-burger]');
     var nav    = document.querySelector('[data-nav]');
 
@@ -121,11 +105,6 @@
         });
     }
 
-    /* =================================================================
-       Выезжающие уведомления
-       Один стек на страницу: и flash-сообщения, и ошибки вне формы,
-       и ответы на fetch-запросы выглядят одинаково.
-       ================================================================= */
     var TOAST_LIFETIME = 6000;
     var stack = document.querySelector('[data-toasts]');
 
@@ -141,9 +120,7 @@
     }
 
     function bindToast(node) {
-        // Имя класса — toast-item, а не toast: у Bootstrap есть компонент
-        // .toast с правилом .toast:not(.showing) { display: none },
-        // из-за которого уведомление пропадало бы совсем.
+
         node.classList.add('toast-item');
 
         var close = node.querySelector('.alert__close');
@@ -159,7 +136,6 @@
         }, TOAST_LIFETIME);
     }
 
-    /** Показать уведомление из скрипта. */
     function toast(type, text) {
         if (!stack) {
             return;
@@ -169,7 +145,6 @@
         var body  = document.createElement('span');
         var close = document.createElement('button');
 
-        // Текст приходит с сервера — вставляется только через textContent.
         icon.className  = 'bi ' + toastIcon(type);
         body.textContent = text;
 
@@ -188,7 +163,6 @@
         bindToast(node);
     }
 
-    // Готовые блоки из разметки переносим в тот же стек.
     document.querySelectorAll('[data-toast]').forEach(function (node) {
         if (stack && node.parentNode !== stack) {
             stack.appendChild(node);
@@ -197,9 +171,6 @@
         bindToast(node);
     });
 
-    /* =================================================================
-       Появление блоков при прокрутке
-       ================================================================= */
     var reveals = document.querySelectorAll('[data-reveal]');
 
     if (reveals.length > 0) {
@@ -219,18 +190,13 @@
                 observer.observe(node);
             });
         } else {
-            // Без поддержки IntersectionObserver показываем всё сразу.
+
             reveals.forEach(function (node) {
                 node.classList.add('is-visible');
             });
         }
     }
 
-    /* =================================================================
-       Подтверждение действия
-       Первое нажатие показывает вопрос, второе — отправляет форму.
-       Без JavaScript форма отправляется сразу обычным POST.
-       ================================================================= */
     document.querySelectorAll('[data-confirm]').forEach(function (box) {
         var form   = box.querySelector('form');
         var open   = box.querySelector('[data-confirm-open]');
@@ -265,10 +231,6 @@
         }
     });
 
-    /* =================================================================
-       Клиентская валидация форм
-       Показывает сообщение под полем до отправки на сервер.
-       ================================================================= */
     var MESSAGES = {
         valueMissing: 'Заполните поле.',
         tooShort: 'Слишком короткое значение.',
@@ -281,7 +243,7 @@
     };
 
     function messageFor(input, error) {
-        // У полей date и time браузер знает границы сам — подставляем их.
+
         if ((error === 'rangeUnderflow' || error === 'rangeOverflow') && input.min && input.max) {
             return 'Выберите значение от ' + input.min + ' до ' + input.max + '.';
         }
@@ -293,7 +255,6 @@
         return MESSAGES[error] || 'Проверьте значение поля.';
     }
 
-    /** Первая ошибка проверки браузера — в том же порядке, что и в Validator. */
     function errorOf(input) {
         var validity = input.validity;
         var errors = [
@@ -377,7 +338,6 @@
             }
         });
 
-        // Убираем ошибку, как только пользователь начал исправлять поле.
         form.addEventListener('input', function (event) {
             if (event.target.matches('.field__input')) {
                 clearError(event.target);
@@ -385,12 +345,6 @@
         });
     });
 
-    /* =================================================================
-       Смена статуса заявки в панели администратора
-       Форма отправляется через fetch: страница не перезагружается,
-       бейдж анимируется, счётчики и форма переходов обновляются на месте.
-       Без JavaScript форма уходит обычным POST с перезагрузкой.
-       ================================================================= */
     function updateCounts(counts) {
         document.querySelectorAll('[data-stats] .stat').forEach(function (stat) {
             var key = stat.getAttribute('data-stat');
@@ -419,11 +373,11 @@
 
     function pulse(node) {
         node.classList.remove('is-pulsed');
-        void node.offsetWidth;                 // чтение layout перезапускает анимацию
+        void node.offsetWidth;
+
         node.classList.add('is-pulsed');
     }
 
-    /** Пересобрать ячейку действий под новый набор переходов. */
     function buildActions(source, transitions) {
         var cell = source.closest('[data-status-actions]');
         var form = source;
@@ -504,8 +458,6 @@
         updateCounts(data.counts);
         updateResultTotal(data.total);
 
-        // При активном фильтре по статусу заявка изменила статус и
-        // больше не принадлежит выборке — уезжает из таблицы.
         var wrap = document.querySelector('[data-status-filter]');
         var filter = wrap ? wrap.getAttribute('data-status-filter') : '';
 
@@ -517,43 +469,47 @@
         }
     }
 
-    document.querySelectorAll('form[data-status-form]').forEach(function (form) {
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
+    document.addEventListener('submit', function (event) {
+        var form = event.target.closest('form[data-status-form]');
 
-            var button = form.querySelector('button[type="submit"]');
+        if (!form) {
+            return;
+        }
 
-            if (button) {
-                button.disabled = true;
-                button.classList.add('is-busy');
-            }
+        event.preventDefault();
 
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin'
+        var button = form.querySelector('button[type="submit"]');
+
+        if (button) {
+            button.disabled = true;
+            button.classList.add('is-busy');
+        }
+
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        })
+            .then(function (response) {
+                return response.json();
             })
-                .then(function (response) {
-                    return response.json();
-                })
-                .then(function (data) {
-                    if (data && data.ok) {
-                        applyStatus(form, data);
-                        toast('success', data.message);
-                    } else {
-                        toast('danger', (data && data.message) || 'Не удалось изменить статус.');
-                    }
-                })
-                .catch(function () {
-                    toast('danger', 'Сервер недоступен. Обновите страницу и попробуйте снова.');
-                })
-                .then(function () {
-                    if (button) {
-                        button.disabled = false;
-                        button.classList.remove('is-busy');
-                    }
-                });
-        });
+            .then(function (data) {
+                if (data && data.ok) {
+                    applyStatus(form, data);
+                    toast('success', data.message);
+                } else {
+                    toast('danger', (data && data.message) || 'Не удалось изменить статус.');
+                }
+            })
+            .catch(function () {
+                toast('danger', 'Сервер недоступен. Обновите страницу и попробуйте снова.');
+            })
+            .then(function () {
+                if (button) {
+                    button.disabled = false;
+                    button.classList.remove('is-busy');
+                }
+            });
     });
 })();

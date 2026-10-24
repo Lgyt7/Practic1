@@ -1,14 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/review_create.php
- * Обработка формы отзыва о работе клиники.
- *
- * Отзыв может быть оставлен только владельцем заявки
- * и только если приём уже завершён.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 Auth::requireLogin();
@@ -25,19 +17,16 @@ setOld(['review' => $text, 'rating' => $rating === null ? '' : (string) $rating]
 
 $application = Application::findById($applicationId);
 
-// Заявка должна существовать и принадлежать текущему пользователю.
 if ($application === null || (int) $application['user_id'] !== Auth::id()) {
     setErrors(['review' => 'Заявка не найдена.']);
     redirect('frontend/applications.php');
 }
 
-// Проверка статуса выполняется на сервере.
 if (!Application::canReview($application['status'])) {
     setErrors(['review' => 'Отзыв можно оставить только после завершения приёма.']);
     redirect('frontend/applications.php');
 }
 
-// Один отзыв на одну заявку.
 if (Review::exists($applicationId)) {
     setErrors(['review' => 'Отзыв по этой заявке уже оставлен.']);
     redirect('frontend/applications.php');

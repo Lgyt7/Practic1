@@ -1,16 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/partials/alert.php
- * Один уведомляющий блок — используется flash-сообщениями, ошибками
- * вне формы и ответами на fetch-запросы.
- *
- * Ожидает две переменные:
- *   $__alertType — success | danger
- *   $__alertText — текст (выводится с экранированием)
- */
-
 $__alertType = $__alertType ?? 'danger';
 $__alertText = (string) ($__alertText ?? '');
 ?>

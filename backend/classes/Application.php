@@ -1,23 +1,11 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Модель заявки на приём.
- * Жизненный цикл: «Новая» → «Подтверждена» → «Приём завершён» | «Отменена».
- * Заявку в статусе «Новая» может отменить и владелец, и администратор.
- */
 final class Application
 {
-    /**
-     * Символ экранирования для шаблонов LIKE.
-     *
-     * Именно «!», а не «\»: pdo_pgsql разбирает именованные плейсхолдеры
-     * самостоятельно, и обратный слэш внутри строки сбивает этот разбор —
-     * все плейсхолдеры после ESCAPE '\' теряются («Invalid parameter number»).
-     */
+
     public const LIKE_ESCAPE = '!';
 
-    /** Экранирование строки для сравнения по шаблону LIKE. */
     public static function escapeLike(string $value): string
     {
         return str_replace(
@@ -27,7 +15,6 @@ final class Application
         );
     }
 
-    /** Создание заявки. Статус автоматически «Новая». */
     public static function create(
         int $userId,
         int $petId,
@@ -53,14 +40,6 @@ final class Application
         );
     }
 
-    /**
-     * Заявки пользователя вместе с питомцами и отзывами.
-     *
-     * Отзыв подтягивается LEFT JOIN, а не отдельным запросом на каждую
-     * карточку: при десяти заявках было бы десять обращений к базе.
-     * На заявку отзыв один (reviews_application_uniq), поэтому строка
-     * всегда не более чем одна.
-     */
     public static function forUser(int $userId): array
     {
         return Database::fetchAll(
@@ -80,15 +59,6 @@ final class Application
         );
     }
 
-    /**
-     * Все заявки системы с фильтрами, поиском и пагинацией.
-     *
-     * @param string $status  фильтр по статусу ('' — без фильтра)
-     * @param string $service фильтр по услуге  ('' — без фильтра)
-     * @param string $query   поиск по кличке питомца или ФИО владельца
-     * @param int    $page    номер страницы, начиная с 1
-     * @return array{rows: array, total: int, pages: int, page: int}
-     */
     public static function search(
         string $status = '',
         string $service = '',
@@ -109,11 +79,7 @@ final class Application
         }
 
         if ($query !== '') {
-            // Имена плейсхолдеров разные: в нативных препаратах PDO
-            // один и тот же именованный параметр нельзя использовать дважды.
-            //
-            // ESCAPE '!' — чтобы «%» и «_» в поисковой строке искались
-            // как обычные символы, а не как служебные шаблоны LIKE.
+
             $where[] = "(p.name ILIKE :query_pet ESCAPE '" . self::LIKE_ESCAPE . "'"
                 . " OR u.full_name ILIKE :query_owner ESCAPE '" . self::LIKE_ESCAPE . "')";
 
@@ -125,12 +91,10 @@ final class Application
 
         $clause = $where === [] ? '' : (' WHERE ' . implode(' AND ', $where));
 
-        // Питомец нужен и фильтрам, и выборке — присоединяем в обоих запросах.
         $from = ' FROM applications a
                   JOIN users u ON u.id = a.user_id
                   JOIN pets p  ON p.id = a.pet_id';
 
-        // Общее количество записей — для расчёта числа страницы.
         $total = (int) (Database::fetchOne('SELECT COUNT(*) AS n' . $from . $clause, $params)['n'] ?? 0);
 
         $perPage = max(1, ADMIN_PAGE_SIZE);
@@ -175,7 +139,6 @@ final class Application
         return ['rows' => $rows, 'total' => $total, 'pages' => $pages, 'page' => $page];
     }
 
-    /** Заявка по идентификатору. */
     public static function findById(int $id): ?array
     {
         return Database::fetchOne(
@@ -188,10 +151,6 @@ final class Application
         );
     }
 
-    /**
-     * Смена статуса с проверкой допустимости перехода.
-     * Возвращает текст ошибки либо null при успехе.
-     */
     public static function changeStatus(int $id, string $status): ?string
     {
         if (!in_array($status, STATUSES, true)) {
@@ -222,13 +181,6 @@ final class Application
         return null;
     }
 
-    /**
-     * Отмена заявки самим владельцем.
-     *
-     * Возвращает текст ошибки либо null при успехе. Чужая заявка и заявка
-     * не в статусе «Новая» отклоняются одинаково — по перебору идентификаторов
-     * владелец не должен узнавать, что заявка № существует и кому принадлежит.
-     */
     public static function cancelByUser(int $id, int $userId): ?string
     {
         $application = Database::fetchOne(
@@ -256,25 +208,21 @@ final class Application
         return null;
     }
 
-    /** Статусы, доступные из текущего (панель администратора). */
     public static function availableTransitions(string $current): array
     {
         return STATUS_TRANSITIONS[$current] ?? [];
     }
 
-    /** Разрешено ли оставить отзыв по заявке. */
     public static function canReview(string $status): bool
     {
         return $status === STATUS_FOR_REVIEW;
     }
 
-    /** Разрешено ли владельцу отменить заявку. */
     public static function canCancel(string $status): bool
     {
         return $status === STATUS_NEW;
     }
 
-    /** Счётчики заявок по статусам (панель администратора). */
     public static function countByStatus(): array
     {
         $counts = array_fill_keys(STATUSES, 0);

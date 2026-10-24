@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/pet_create.php
- * Добавление питомца в профиль владельца.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 Auth::requireLogin();
@@ -46,9 +41,6 @@ if ($validator->fails()) {
 
 $userId = (int) Auth::id();
 
-// Кличка уникальна в пределах владельца: одинаковые имена
-// в списке выбора неразличимы. Уникальность проверяется и здесь
-// для понятного сообщения, и в БД через pets_user_name_uniq.
 if (Pet::nameExists($userId, $name)) {
     setErrors(['name' => 'Питомец с такой кличкой уже есть в вашем профиле.']);
     redirect('frontend/pets.php');

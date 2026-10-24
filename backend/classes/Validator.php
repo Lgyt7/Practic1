@@ -1,18 +1,9 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Класс валидации полей форм.
- *
- * Использование:
- *   $v = Validator::make($_POST)
- *          ->login()
- *          ->password('password');
- *   if ($v->fails()) { $errors = $v->errors(); }
- */
 final class Validator
 {
-    /** @var array<string, string> */
+
     private array $errors = [];
 
     private function __construct(private array $data)
@@ -24,19 +15,16 @@ final class Validator
         return new self($data);
     }
 
-    /** Есть ли ошибки. */
     public function fails(): bool
     {
         return $this->errors !== [];
     }
 
-    /** @return array<string, string> */
     public function errors(): array
     {
         return $this->errors;
     }
 
-    /** Значение поля или '' (с обрезкой пробелов). */
     private function value(string $field): string
     {
         $value = $this->data[$field] ?? '';
@@ -44,7 +32,6 @@ final class Validator
         return is_string($value) ? trim($value) : '';
     }
 
-    /** Логин: латиница и цифры, не менее 6 символов. */
     public function login(string $field = 'login', string $label = 'Логин'): self
     {
         $value = $this->value($field);
@@ -63,7 +50,6 @@ final class Validator
         return $this;
     }
 
-    /** Пароль: не менее 6 символов. */
     public function password(string $field = 'password', string $label = 'Пароль'): self
     {
         $value = $this->data[$field] ?? '';
@@ -79,7 +65,6 @@ final class Validator
         return $this;
     }
 
-    /** ФИО: кириллица и пробелы. */
     public function fullName(string $field = 'full_name', string $label = 'ФИО'): self
     {
         $value = $this->value($field);
@@ -98,7 +83,6 @@ final class Validator
         return $this;
     }
 
-    /** Телефон: формат +7(XXX)XXX-XX-XX. */
     public function phone(string $field = 'phone', string $label = 'Телефон'): self
     {
         $value = $this->value($field);
@@ -114,7 +98,6 @@ final class Validator
         return $this;
     }
 
-    /** Электронная почта. */
     public function email(string $field = 'email', string $label = 'Электронная почта'): self
     {
         $value = $this->value($field);
@@ -130,10 +113,6 @@ final class Validator
         return $this;
     }
 
-    /**
-     * Дата в формате ГГГГ-ММ-ДД — именно такой формат отдаёт
-     * нативное поле <input type="date"> и понимает PostgreSQL.
-     */
     public static function isDate(string $value): bool
     {
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
@@ -141,7 +120,6 @@ final class Validator
         return $date !== false && $date->format('Y-m-d') === $value;
     }
 
-    /** Дата приёма: обязательное поле в формате ГГГГ-ММ-ДД. */
     public function date(string $field = 'appt_date', string $label = 'Дата приёма'): self
     {
         $value = $this->value($field);
@@ -157,7 +135,6 @@ final class Validator
         return $this;
     }
 
-    /** Необязательная дата: пустое значение допустимо, мусорное — нет. */
     public function optionalDate(string $field, string $label): self
     {
         $value = $this->value($field);
@@ -173,7 +150,6 @@ final class Validator
         return $this;
     }
 
-    /** Дата не в прошлом — проверка отдельная от формата: смысл другой. */
     public function notInPast(string $field, string $label): self
     {
         $value = $this->value($field);
@@ -189,13 +165,6 @@ final class Validator
         return $this;
     }
 
-    /**
-     * Время приёма: обязательное поле в формате ЧЧ:ММ в часы работы клиники.
-     *
-     * На клиенте тот же диапазон проверяют атрибуты min/max/step поля
-     * <input type="time">, но браузеру доверять нельзя — значение приходит
-     * обычной строкой и проверяется здесь повторно.
-     */
     public function time(string $field = 'appt_time', string $label = 'Время приёма'): self
     {
         $value = $this->value($field);
@@ -215,7 +184,6 @@ final class Validator
         return $this;
     }
 
-    /** Значение выбирается из справочника. */
     public function inList(string $field, array $allowed, string $label): self
     {
         $value = $this->value($field);
@@ -238,27 +206,21 @@ final class Validator
         return $this;
     }
 
-    /**
- * Идентификатор записи: положительное целое число.
- * Право на запись проверяется отдельно — числовой формат
- * ничего не говорит о том, кому она принадлежит.
- */
-public function id(string $field, string $label): self
-{
-    $value = $this->value($field);
+    public function id(string $field, string $label): self
+    {
+        $value = $this->value($field);
 
-    if ($value === '') {
-        return $this->add($field, "Выберите значение поля «{$label}».");
+        if ($value === '') {
+            return $this->add($field, "Выберите значение поля «{$label}».");
+        }
+
+        if (!ctype_digit($value) || (int) $value < 1) {
+            return $this->add($field, "Поле «{$label}»: ожидается положительное число.");
+        }
+
+        return $this;
     }
 
-    if (!ctype_digit($value) || (int) $value < 1) {
-        return $this->add($field, "Поле «{$label}»: ожидается положительное число.");
-    }
-
-    return $this;
-}
-
-/** Строка произвольной длины: обязательна, minLength…maxLength. */
     public function text(
         string $field,
         string $label,
@@ -285,10 +247,6 @@ public function id(string $field, string $label): self
         return $this;
     }
 
-    /**
-     * Необязательная строка: пустое значение допустимо,
-     * но если значение есть — длина проверяется.
-     */
     public function optionalText(string $field, string $label, int $max = 255): self
     {
         $value = $this->value($field);
@@ -304,7 +262,6 @@ public function id(string $field, string $label): self
         return $this;
     }
 
-    /** Способ оплаты: наличными или картой в клинике. */
     public function paymentMethod(string $field = 'payment_method', string $label = 'Способ оплаты'): self
     {
         $value = $this->value($field);
@@ -320,7 +277,6 @@ public function id(string $field, string $label): self
         return $this;
     }
 
-    /** Добавить ошибку вручную (например, при проверке уникальности в БД). */
     public function add(string $field, string $message): self
     {
         $this->errors[$field] ??= $message;

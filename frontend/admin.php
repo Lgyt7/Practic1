@@ -1,28 +1,11 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/admin.php
- * Панель администратора клиники.
- *
- * Возможности: фильтр по статусу и услуге, поиск по кличке питомца
- * или ФИО владельца, пагинация, всплывающие сообщения, смена статуса.
- *
- * Доступ только для роли admin — проверка выполняется на сервере
- * (Auth::requireAdmin), неавторизованный пользователь сюда не попадёт.
- */
-
 require_once __DIR__ . '/../backend/bootstrap.php';
 
 Auth::requireAdmin();
 
 $__pageTitle = 'Панель администратора';
-
-/* ---------- Фильтры из GET ----------
-   Каждый параметр проверяется по справочнику: произвольное значение
-   из адресной строки не должно попасть в SQL как есть.
-   Разбор сосредоточен в ApplicationFilter — тем же кодом пользуется
-   обработчик смены статуса, чтобы пересчитать счётчики на месте. */
 
 $__filter = ApplicationFilter::fromArray($_GET);
 
@@ -32,8 +15,6 @@ $__query = $__filter->query;
 
 $__statuses = STATUSES;
 
-/* Поиск идёт по кличке питомца и ФИО владельца.
-   Служебные символы LIKE экранируются внутри Application::search(). */
 $__result = Application::search($__status, $__service, $__query, $__filter->page);
 $__rows   = $__result['rows'];
 $__pages  = $__result['pages'];
@@ -41,12 +22,10 @@ $__page   = $__result['page'];
 $__total  = $__result['total'];
 $__counts = Application::countByStatus();
 
-/** Адрес текущей выборки — возвращается сюда после смены статуса. */
 $__back = urlQuery('frontend/admin.php', $__filter->paramsWithPage($__page));
 
 $__filtered = $__filter->isActive();
 
-/** Первая и последняя показанные записи: «показано 1–5 из 12». */
 $__from = $__total === 0 ? 0 : ($__page - 1) * ADMIN_PAGE_SIZE + 1;
 $__to   = min($__page * ADMIN_PAGE_SIZE, $__total);
 
@@ -65,7 +44,6 @@ require __DIR__ . '/partials/header.php';
             </span>
         </div>
 
-        <!-- ============ Сводка ============ -->
         <div class="stats" data-stats>
             <?php foreach ($__counts as $__s => $__count): ?>
                 <?php $__isActive = $__status === $__s; ?>
@@ -79,7 +57,6 @@ require __DIR__ . '/partials/header.php';
             <?php endforeach; ?>
         </div>
 
-        <!-- ============ Поиск и фильтры ============ -->
         <form class="admin-filters" method="get" action="<?= url('frontend/admin.php') ?>">
 
             <div class="admin-filters__row">
@@ -130,7 +107,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         </form>
 
-        <!-- ============ Быстрые фильтры по статусу ============ -->
         <div class="filters">
             <a class="chip<?= $__status === '' ? ' chip--active' : '' ?>"
                href="<?= urlQuery('frontend/admin.php', ['service' => $__service, 'q' => $__query]) ?>">
@@ -145,7 +121,6 @@ require __DIR__ . '/partials/header.php';
             <?php endforeach; ?>
         </div>
 
-        <!-- ============ Результат ============ -->
         <p class="result-line">
             <i class="bi bi-info-circle"></i>
             <span>
@@ -170,8 +145,8 @@ require __DIR__ . '/partials/header.php';
                 <?php endif; ?>
             </div>
         <?php else: ?>
-            <?php /* Фильтр по статусу нужен скрипту: после смены статуса строка
-                     может перестать соответствовать выборке и должна уехать. */ ?>
+            <?php
+ ?>
             <div class="table-wrap" data-status-filter="<?= e($__status) ?>">
                 <table class="table table--responsive">
                     <thead>
@@ -246,7 +221,6 @@ require __DIR__ . '/partials/header.php';
             </div>
         <?php endif; ?>
 
-        <!-- ============ Пагинация ============ -->
         <?php if ($__pages > 1): ?>
             <nav class="pagination" aria-label="Страницы списка заявок">
                 <?php if ($__page > 1): ?>

@@ -1,14 +1,8 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/application_create.php
- * Формирование заявки на приём.
- */
-
 require_once __DIR__ . '/../backend/bootstrap.php';
 
-// Только для авторизованных владельцев питомцев.
 Auth::requireLogin();
 
 if (Auth::isAdmin()) {
@@ -19,13 +13,11 @@ $__pageTitle = 'Запись на приём';
 $__errors    = takeErrors();
 $__old       = takeOld();
 
-/** Питомцы выбираются из профиля — вводить кличку заново не нужно. */
 $__pets = Pet::forUser(Auth::id());
 
 $value = static fn (string $field): string => oldValue($__old, $field);
 $error = static fn (string $field): ?string => $__errors[$field] ?? null;
 
-/** Минимальная дата записи — сегодня. */
 $__minDate = date('Y-m-d');
 
 require __DIR__ . '/partials/header.php';
@@ -34,8 +26,7 @@ require __DIR__ . '/partials/header.php';
 <main class="page">
     <div class="container container--narrow">
         <?php if ($__pets === []): ?>
-            <!-- Питомцев нет: записаться ещё не на кого, поэтому форма не показывается.
-                 Ошибки при этом не теряются — показываются рядом с объяснением. -->
+
             <div class="card card--empty" data-reveal>
                 <i class="bi bi-heart card--empty__icon"></i>
                 <h1 class="page-title">
@@ -124,8 +115,8 @@ require __DIR__ . '/partials/header.php';
                             <label class="field__label" for="appt_time">Время приёма</label>
                             <span class="field__control">
                                 <i class="bi bi-clock field__control-icon"></i>
-                                <?php /* min/max/step проверяются браузером до отправки,
-                                         сервер проверяет то же самое повторно. */ ?>
+                                <?php
+ ?>
                                 <input class="field__input field__input--icon" type="time" id="appt_time"
                                        name="appt_time" value="<?= e($value('appt_time')) ?>" required
                                        min="<?= e(Schedule::open()) ?>" max="<?= e(Schedule::close()) ?>"

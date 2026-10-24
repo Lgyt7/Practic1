@@ -1,19 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * tools/reload_db.php
- * Пересоздание таблиц БД по backend/database/dump.sql.
- *
- * Нужен после правки структуры: скрипт начинается с DROP TABLE,
- * поэтому все заявки и отзывы удаляются. Пользователи и администратор
- * создаются заново скриптом seed.php.
- *
- * Запуск:
- *   php tools/reload_db.php
- *   php backend/database/seed.php
- */
-
 require_once dirname(__DIR__) . '/backend/config.php';
 
 $dump = dirname(__DIR__) . '/backend/database/dump.sql';

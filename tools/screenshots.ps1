@@ -1,15 +1,3 @@
-# Снимки страниц для проверки вёрстки.
-#
-# Edge в headless-режиме не даёт вьюпорт меньше ~492 px, поэтому страницы
-# открываются внутри <iframe> нужной ширины: медиазапросы внутри фрейма
-# считаются по его ширине.
-#
-# Запуск:
-#   php -S 127.0.0.1:8088 -t .
-#   powershell -NoProfile -ExecutionPolicy Bypass -File tools/screenshots.ps1
-#
-# Скриншоты складываются в %TEMP%\vetclinic\shots.
-
 $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 $shots = Join-Path $env:TEMP 'vetclinic\shots'
 $base = 'http://127.0.0.1:8088/tools/viewport.html'
@@ -21,8 +9,6 @@ if (-not (Test-Path $edge)) {
 
 New-Item -ItemType Directory -Force -Path $shots | Out-Null
 
-# 'имя' — префикс файла, 'q' — параметры страницы-обёртки, 'h' — высота снимка.
-# Ширины: 390 px — смартфон, 768 px — планшет, 1280 px — ноутбук.
 $pages = @(
     @{ n = 'mobile_index';       h = 844;  q = '?page=/index.php&role=guest&w=390&h=844' },
     @{ n = 'mobile_login';       h = 844;  q = '?page=/frontend/login.php&role=guest&w=390&h=844' },

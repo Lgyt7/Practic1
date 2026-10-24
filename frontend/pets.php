@@ -1,14 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/pets.php
- * Профиль питомцев владельца: список, добавление и удаление.
- *
- * Питомец добавляется здесь один раз, а при записи на приём
- * выбирается из списка — вводить кличку заново не нужно.
- */
-
 require_once __DIR__ . '/../backend/bootstrap.php';
 
 Auth::requireLogin();
@@ -23,7 +15,6 @@ $__old       = takeOld();
 
 $__pets = Pet::forUser(Auth::id());
 
-// Имена хелперов те же, что на остальных страницах с формами.
 $value = static fn (string $field): string => oldValue($__old, $field);
 $error = static fn (string $field): ?string => $__errors[$field] ?? null;
 
@@ -42,7 +33,7 @@ require __DIR__ . '/partials/header.php';
         </div>
 
         <div class="page-columns">
-            <!-- ============ Список питомцев ============ -->
+
             <section class="pets">
                 <h2 class="section-title">
                     <i class="bi bi-list-check"></i> Список
@@ -127,7 +118,6 @@ require __DIR__ . '/partials/header.php';
                 <?php endif; ?>
             </section>
 
-            <!-- ============ Форма добавления ============ -->
             <section class="card card--form card--form--side">
                 <h2 class="section-title">
                     <i class="bi bi-plus-circle"></i> Добавить питомца

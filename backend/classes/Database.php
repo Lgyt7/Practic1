@@ -1,15 +1,10 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Класс-обёртка над PDO.
- * Реализует паттерн Singleton: одно подключение на весь запрос.
- */
 final class Database
 {
     private static ?PDO $instance = null;
 
-    /** Подключение к PostgreSQL (создаётся при первом обращении). */
     public static function getConnection(): PDO
     {
         if (self::$instance === null) {
@@ -31,17 +26,6 @@ final class Database
         return self::$instance;
     }
 
-    /**
-     * Подготовить и выполнить запрос.
-     *
-     * Значение null передаётся как SQL NULL, а не как пустая строка:
-     * для этого у PHP есть отдельный тип PDO::PARAM_NULL, а PDO::PARAM_STR
-     * молча превратил бы null в ''.
-     *
-     * @param string              $sql    запрос с плейсхолдерами
-     * @param array<string,mixed> $params значения для подстановки
-     * @param array<string,int>   $types  типы PDO::PARAM_* (нужны для LIMIT/OFFSET)
-     */
     private static function run(string $sql, array $params, array $types = []): PDOStatement
     {
         $stmt = self::getConnection()->prepare($sql);
@@ -60,13 +44,11 @@ final class Database
         return $stmt;
     }
 
-    /** Выполнить подготовленный запрос и вернуть все строки. */
     public static function fetchAll(string $sql, array $params = [], array $types = []): array
     {
         return self::run($sql, $params, $types)->fetchAll();
     }
 
-    /** Выполнить подготовленный запрос и вернуть одну строку. */
     public static function fetchOne(string $sql, array $params = [], array $types = []): ?array
     {
         $row = self::run($sql, $params, $types)->fetch();
@@ -74,17 +56,11 @@ final class Database
         return $row === false ? null : $row;
     }
 
-    /** Выполнить подготовленный запрос без возврата данных. */
     public static function execute(string $sql, array $params = [], array $types = []): int
     {
         return self::run($sql, $params, $types)->rowCount();
     }
 
-    /**
-     * Выполнить INSERT и вернуть id новой записи.
-     * Порядок вставки таблиц в dump.sql совпадает с этим порядком,
-     * поэтому lastInsertId() без имени последовательности достаточно.
-     */
     public static function insert(string $sql, array $params = []): int
     {
         self::execute($sql, $params);

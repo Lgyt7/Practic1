@@ -1,14 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/pet_delete.php
- * Удаление питомца из профиля владельца.
- *
- * Питомца с заявками удалить нельзя: в таблице applications
- * осталась бы ссылка на несуществующую запись.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 Auth::requireLogin();

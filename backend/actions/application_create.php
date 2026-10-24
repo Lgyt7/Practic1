@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/application_create.php
- * Обработка формы создания заявки на приём.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 Auth::requireLogin();
@@ -28,8 +23,6 @@ setOld([
     'payment_method' => $payment,
 ]);
 
-// Услуга принимается только из справочника (backend/config.php),
-// свободный текст отклоняется сервером.
 $validator = Validator::make($_POST)
     ->id('pet_id', 'Питомец')
     ->inList('service', SERVICES, 'Услуга')
@@ -43,8 +36,6 @@ if ($validator->fails()) {
     redirect('frontend/application_create.php');
 }
 
-// Питомец должен принадлежать владельцу: подсунутый чужой id
-// не должен превращаться в запись на чужого питомца.
 if (Pet::findForUser((int) $petId, (int) Auth::id()) === null) {
     setErrors(['pet_id' => 'Выберите питомца из своего профиля.']);
     redirect('frontend/application_create.php');

@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/login.php
- * Обработка формы авторизации.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 if (!isPost()) {
@@ -34,7 +29,6 @@ if (!Auth::attempt($login, $password)) {
 setOld([]);
 setErrors([]);
 
-// Администратор после входа попадает в свою панель.
 if (Auth::isAdmin()) {
     flash('success', 'Вход выполнен. Панель администратора.');
     redirect('frontend/admin.php');

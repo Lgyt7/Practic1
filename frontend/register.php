@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/register.php
- * Страница регистрации нового пользователя.
- */
-
 require_once __DIR__ . '/../backend/bootstrap.php';
 
 if (Auth::check()) {
@@ -16,10 +11,8 @@ $__pageTitle = 'Регистрация';
 $__errors    = takeErrors();
 $__old       = takeOld();
 
-/** Значение поля: введённое пользователем, иначе пустое. */
 $value = static fn (string $field): string => oldValue($__old, $field);
 
-/** Ошибка поля, если она есть. */
 $error = static function (string $field) use ($__errors): ?string {
     return $__errors[$field] ?? null;
 };

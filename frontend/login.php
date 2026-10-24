@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * frontend/login.php
- * Страница авторизации пользователя.
- */
-
 require_once __DIR__ . '/../backend/bootstrap.php';
 
 if (Auth::check()) {

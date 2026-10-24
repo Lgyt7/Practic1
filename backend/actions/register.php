@@ -1,11 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * backend/actions/register.php
- * Обработка формы регистрации.
- */
-
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 if (!isPost()) {
@@ -25,7 +20,6 @@ $validator = Validator::make($_POST)
     ->email()
     ->password();
 
-// Введённые значения сохраняем, чтобы вернуть их в форму.
 setOld([
     'login'     => $login,
     'full_name' => $fullName,
