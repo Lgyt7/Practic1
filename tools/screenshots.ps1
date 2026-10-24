@@ -1,5 +1,5 @@
 $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-$shots = Join-Path $env:TEMP 'vetclinic\shots'
+$shots = Join-Path $env:TEMP 'vetclinic-shots'
 $base = 'http://127.0.0.1:8088/tools/viewport.html'
 
 if (-not (Test-Path $edge)) {
